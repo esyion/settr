@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Agents Plus",
@@ -13,7 +14,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <head />
+      <body>
+        <main>{children}</main>
+        <Toaster />
+      </body>
     </html>
   );
 }
