@@ -35,7 +35,7 @@ export function Overview({
             控制你的规则文件
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            客户端只读写本机 ~/.agents/AGENTS.md，云端版本通过真实 API 管理。
+            客户端只读写本机 ~/AGENTS.md，云端版本通过真实 API 管理。
           </p>
         </div>
         <Button

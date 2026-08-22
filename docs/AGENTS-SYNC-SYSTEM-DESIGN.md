@@ -1,6 +1,6 @@
 # Agents Plus 系统设计方案
 
-> 目标：让用户在多台电脑上共享同一份 `~/.agents/AGENTS.md`，并拥有安全、可追溯、可恢复的云端版本管理能力。
+> 目标：让用户在多台电脑上共享同一份 `~/AGENTS.md`，并拥有安全、可追溯、可恢复的云端版本管理能力。
 >
 > 适用项目：Tauri 2 + Next.js + React + TypeScript + Tailwind CSS + shadcn/ui + Rust。
 
@@ -8,7 +8,7 @@
 
 ### 1.1 核心问题
 
-每台电脑都可能存在一份本地 `~/.agents/AGENTS.md`。用户在公司电脑修改了规则，回家后还需要手工复制；多台设备同时修改时，又容易覆盖或丢失内容。
+每台电脑都可能存在一份本地 `~/AGENTS.md`。用户在公司电脑修改了规则，回家后还需要手工复制；多台设备同时修改时，又容易覆盖或丢失内容。
 
 ### 1.2 产品目标
 
@@ -21,7 +21,8 @@
 
 ### 1.3 非目标（MVP 不做）
 
-- 不同步整个 `~/.agents` 目录，只同步 `AGENTS.md`。
+- 不管理整个用户主目录，只同步 `~/AGENTS.md`。
+- 历史版本曾使用 `~/.agents/AGENTS.md`；客户端首次发现旧文件时会复制到 `~/AGENTS.md`，保留旧文件作为备份，不删除旧文件。
 - 不执行 AGENTS.md 中的命令，不解析或评价规则内容。
 - 不在 MVP 中做多人协作编辑器、评论、审批流和团队组织权限。
 - 不把云端文档自动注入所有应用；只负责本地文件同步。
@@ -60,7 +61,7 @@
 
 - Tauri 主进程：负责文件访问、系统路径、网络请求、凭据存储、文件监控和原子写入。
 - Next.js 前端：通过 App Router 静态导出负责状态展示、登录、同步确认、版本浏览、冲突处理和设置；不使用 SSR、Server Actions 或 Route Handlers。
-- 本地同步模块：作为 Rust 应用服务存在，不让组件直接读写 `~/.agents/AGENTS.md`。
+- 本地同步模块：作为 Rust 应用服务存在，不让组件直接读写 `~/AGENTS.md`。
 - 可选自启动模块：MVP 先做“启动时检查”，后续再增加系统托盘和后台自启动。
 
 #### 服务端
@@ -165,14 +166,13 @@
 
 默认主文件：
 
-- Windows：用户主目录下的 `.agents/AGENTS.md`
-- macOS/Linux：用户主目录下的 `.agents/AGENTS.md`
+- Windows、macOS、Linux：用户主目录下的 `~/AGENTS.md`
 
-不要硬编码盘符或绝对路径。统一使用 Rust 的 home directory API 解析用户目录，再拼接 `.agents/AGENTS.md`。
+不要硬编码盘符或绝对路径。统一使用 Rust 的 home directory API 解析用户目录，再拼接 `AGENTS.md`。
 
 ### 4.2 本地管理目录
 
-建议在 `~/.agents/.agents-plus/` 保存同步元数据：
+建议在 `~/.agents-plus/` 保存同步元数据：
 
     .agents-plus/
     ├─ manifest.json       # 当前云端基线、hash、设备标识

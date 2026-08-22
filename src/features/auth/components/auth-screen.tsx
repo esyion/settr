@@ -70,7 +70,7 @@ export function AuthScreen({
               </div>
               <div>
                 <p className="font-mono text-xs text-primary-foreground/60">
-                  ~/.agents/AGENTS.md
+                  ~/AGENTS.md
                 </p>
                 <h1 className="text-xl font-semibold">Agents Plus</h1>
               </div>
@@ -95,7 +95,7 @@ export function AuthScreen({
             </div>
             <div>
               <p className="font-mono text-xs text-muted-foreground">
-                ~/.agents/AGENTS.md
+                ~/AGENTS.md
               </p>
               <h1 className="text-xl font-semibold">Agents Plus</h1>
             </div>

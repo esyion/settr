@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import {
   api,
   ApiClientError,
@@ -14,8 +14,10 @@ import type {
   SyncState,
 } from "@/lib/contracts";
 import { clearSession } from "@/lib/session-store";
+import { toast } from "sonner";
 import { isTauriRuntime } from "@/lib/tauri";
 import { useDeviceMaintenance } from "@/features/sync/use-device-maintenance";
+import { useSyncStore } from "@/features/sync/store/sync-store";
 import { mergeDocuments } from "@/lib/merge";
 import { sha256 } from "@/features/sync/hash";
 import {
@@ -40,10 +42,7 @@ function isOfflineError(error: unknown) {
   );
 }
 export function useSyncController() {
-  const [state, setState] = useState<SyncState>(EMPTY_STATE);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [mergeDraft, setMergeDraft] = useState<string | null>(null);
+  const { state, busy, notice, mergeDraft, setState, setBusy, setNotice, setMergeDraft } = useSyncStore();
   const refresh = useCallback(async () => {
     setBusy("refresh");
     setState((previous) => ({ ...previous, status: "loading", message: null }));
@@ -60,15 +59,15 @@ export function useSyncController() {
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [setBusy, setNotice, setState]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
   const onLocalSnapshot = useCallback((local: SyncState["local"]) => {
     if (!local) return;
     setState((previous) => ({ ...previous, local, status: previous.document && previous.head && local.contentHash === previous.head.contentHash ? "synced" : previous.status }));
-  }, []);
-  const onMaintenanceError = useCallback((error: unknown) => setNotice(readableError(error)), []);
+  }, [setState]);
+  const onMaintenanceError = useCallback((error: unknown) => setNotice(readableError(error)), [setNotice]);
   useDeviceMaintenance({ identity: state.identity, active: Boolean(state.user), document: state.document, head: state.head, onLocalSnapshot, onError: onMaintenanceError });
   async function action(name: string, fn: () => Promise<void>) {
     setBusy(name);
@@ -205,11 +204,7 @@ export function useSyncController() {
     });
   }
   async function restore(revisionId: string) {
-    if (
-      !state.document ||
-      !window.confirm("恢复会创建一个新的云端版本，并覆盖本地文件。是否继续？")
-    )
-      return;
+    if (!state.document) return;
     await action("restore", async () => {
       const revision = await api.restoreRevision(
         state.document!.id,
@@ -232,6 +227,7 @@ export function useSyncController() {
         state.local?.contentHash || null,
         manifest,
       );
+      toast.success("已恢复为新版本", { description: revision.id });
       setNotice("已恢复为新版本 " + revision.id);
       await refresh();
     });

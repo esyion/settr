@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Copy, Download, FileText, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,6 @@ export function Versions({
   const [records, setRecords] = useState(state.revisions?.records || []);
   const [page, setPage] = useState(state.revisions?.page || 1);
   const [loadingMore, setLoadingMore] = useState(false);
-  useEffect(() => { setRecords(state.revisions?.records || []); setPage(state.revisions?.page || 1); }, [state.revisions]);
   async function open(id: string) {
     if (!state.document) return;
     setLoadingId(id);

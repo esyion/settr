@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   Cloud,
   FileClock,
@@ -51,11 +51,11 @@ function statusVariant(status: SyncStatus) {
 export function ClientApp() {
   const controller = useSyncController();
   const [page, setPage] = useState<Page>("overview");
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
+  const hydrated = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
 
   if (!hydrated)
     return (
@@ -99,7 +99,7 @@ export function ClientApp() {
             </div>
             <div>
               <p className="font-mono text-xs text-muted-foreground">
-                ~/.agents/AGENTS.md
+                ~/AGENTS.md
               </p>
               <h1 className="text-xl font-semibold tracking-tight">
                 Agents Plus

@@ -51,7 +51,7 @@ export function LocalFileCard({ local }: { local: LocalSnapshot | null }) {
             <div className="rounded-lg border border-dashed p-5 text-sm">
               <p className="font-medium">本机尚未找到 AGENTS.md</p>
               <p className="mt-1 text-muted-foreground">
-                请先在 ~/.agents/AGENTS.md 创建文件，或从云端应用版本。
+                请先在 ~/AGENTS.md 创建文件，或从云端应用版本。
               </p>
             </div>
           )}
