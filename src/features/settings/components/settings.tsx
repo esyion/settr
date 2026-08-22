@@ -40,23 +40,25 @@ export function Settings({
           后端地址和设备名只保存在本机。
         </p>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>后端连接</CardTitle>
-          <CardDescription>修改后立即用于下一次 API 请求。</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 sm:flex-row">
-          <Input
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            spellCheck={false}
-          />
-          <Button onClick={() => onSaveApiUrl(url)}>
-            <Save />
-            保存地址
-          </Button>
-        </CardContent>
-      </Card>
+      {process.env.NODE_ENV == "development" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>后端连接</CardTitle>
+            <CardDescription>修改后立即用于下一次 API 请求。</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row">
+            <Input
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              spellCheck={false}
+            />
+            <Button onClick={() => onSaveApiUrl(url)}>
+              <Save />
+              保存地址
+            </Button>
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader>
           <CardTitle>当前设备</CardTitle>

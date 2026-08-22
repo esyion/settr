@@ -43,8 +43,16 @@ export function AuthScreen({
       setMessage("两次输入的密码不一致");
       return;
     }
-    if (mode === "register" && (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password))) {
-      setMessage("密码至少 12 位，并且必须包含大写字母、小写字母、数字和特殊字符");
+    if (
+      mode === "register" &&
+      (!/[A-Z]/.test(password) ||
+        !/[a-z]/.test(password) ||
+        !/[0-9]/.test(password) ||
+        !/[^A-Za-z0-9]/.test(password))
+    ) {
+      setMessage(
+        "密码至少 12 位，并且必须包含大写字母、小写字母、数字和特殊字符",
+      );
       return;
     }
     setBusy(true);
@@ -157,14 +165,17 @@ export function AuthScreen({
                 />
               </label>
             )}
-            <label className="flex flex-col gap-2 text-sm font-medium">
-              后端地址
-              <Input
-                value={apiUrl}
-                onChange={(event) => setApiUrl(event.target.value)}
-                spellCheck={false}
-              />
-            </label>
+
+            {process.env.NODE_ENV == "production" && (
+              <label className="flex flex-col gap-2 text-sm font-medium">
+                后端地址
+                <Input
+                  value={apiUrl}
+                  onChange={(event) => setApiUrl(event.target.value)}
+                  spellCheck={false}
+                />
+              </label>
+            )}
             {message && (
               <div
                 className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
