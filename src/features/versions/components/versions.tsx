@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Download, FileText, RefreshCw } from "lucide-react";
+import { AlertTriangle, Copy, Download, FileText, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogMedia, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api-client";
 import type { Revision, SyncState } from "@/lib/contracts";
 
@@ -43,6 +44,7 @@ export function Versions({
   const [records, setRecords] = useState(state.revisions?.records || []);
   const [page, setPage] = useState(state.revisions?.page || 1);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<Revision | null>(null);
   async function open(id: string) {
     if (!state.document) return;
     setLoadingId(id);
@@ -159,7 +161,7 @@ export function Versions({
             {selected && (
               <CardFooter className="flex flex-wrap gap-2">
                 <Button
-                  onClick={() => void onRestore(selected.id)}
+                  onClick={() => setRestoreTarget(selected)}
                   disabled={Boolean(busy)}
                 >
                   <Download />
@@ -179,6 +181,21 @@ export function Versions({
           </Card>
         </div>
       )}
+      <AlertDialog open={Boolean(restoreTarget)} onOpenChange={(open) => !open && setRestoreTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia><AlertTriangle className="text-amber-500" /></AlertDialogMedia>
+            <AlertDialogTitle>确认恢复此版本？</AlertDialogTitle>
+            <AlertDialogDescription>
+              恢复会创建一个新的云端版本，并覆盖本地 ~/AGENTS.md。覆盖前会自动创建备份，此操作不可直接撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRestoreTarget(null)}>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (restoreTarget) void onRestore(restoreTarget.id); setRestoreTarget(null); }}>确认恢复</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -134,6 +134,9 @@ async function request<T>(
     session && session.accessTokenExpiresAt <= Date.now() + 15_000
       ? await refreshAccessToken()
       : session;
+  if (options.auth !== false && !activeSession) {
+    throw new ApiClientError("登录会话不存在或无法恢复，请重新登录", 40100, 401, null, null);
+  }
   const response = await nativeApiRequest({
     baseUrl,
     method: options.method || "GET",

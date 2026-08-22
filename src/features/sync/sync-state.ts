@@ -1,6 +1,6 @@
-import { api, loadRuntimeSnapshot } from "@/lib/api-client";
+import { api, ApiClientError, loadRuntimeSnapshot } from "@/lib/api-client";
 import type { Revision, SyncState, SyncStatus } from "@/lib/contracts";
-import { loadSession } from "@/lib/session-store";
+import { clearSession, loadSession } from "@/lib/session-store";
 
 export const APP_VERSION = "0.1.0";
 export const EMPTY_STATE: SyncState = {
@@ -38,6 +38,10 @@ export function deriveStatus(
   return localChanged ? "localModified" : "remoteModified";
 }
 
+function isAuthenticationError(error: unknown) {
+  return error instanceof ApiClientError && [40100, 40101, 40102, 40103].includes(error.code);
+}
+
 export async function loadWorkspace(): Promise<SyncState> {
   const runtime = await loadRuntimeSnapshot(APP_VERSION);
   const session = await loadSession();
@@ -49,7 +53,20 @@ export async function loadWorkspace(): Promise<SyncState> {
       identity: runtime.identity,
       message: "请登录后连接云端",
     };
-  const user = await api.me();
+  let user;
+  try {
+    user = await api.me();
+  } catch (error) {
+    if (!isAuthenticationError(error)) throw error;
+    await clearSession();
+    return {
+      ...EMPTY_STATE,
+      status: "signedOut",
+      local: runtime.local,
+      identity: runtime.identity,
+      message: "登录会话已过期，请重新登录",
+    };
+  }
   const document = await api.document();
   const [devices, revisions] = await Promise.all([
     api.devices(),

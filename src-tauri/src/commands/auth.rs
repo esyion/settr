@@ -22,7 +22,12 @@ pub fn save_auth_session(session: String) -> Result<(), String> {
         .map_err(|error| format!("无法访问系统凭据存储: {error}"))?;
     entry
         .set_password(&session)
-        .map_err(|error| format!("无法保存系统凭据: {error}"))
+        .map_err(|error| format!("无法保存系统凭据: {error}"))?;
+    match entry.get_password() {
+        Ok(saved) if saved == session => Ok(()),
+        Ok(_) => Err("系统凭据写入校验失败，请检查系统凭据存储权限".to_string()),
+        Err(error) => Err(format!("系统凭据写入后无法读取: {error}")),
+    }
 }
 
 #[tauri::command]

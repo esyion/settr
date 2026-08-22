@@ -18,6 +18,11 @@ import { Overview } from "@/features/sync/components/overview";
 import { useSyncController } from "@/features/sync/use-sync-controller";
 import { Versions } from "@/features/versions/components/versions";
 import { getApiBaseUrl } from "@/lib/api-client";
+import {
+  DesktopRequiredState,
+  LoadingState,
+  StartupState,
+} from "@/features/app/components/startup-state";
 import type { SyncStatus } from "@/lib/contracts";
 
 type Page = "overview" | "versions" | "devices" | "settings";
@@ -66,21 +71,31 @@ export function ClientApp() {
         </div>
       </main>
     );
-  if (!controller.desktop) return <main className="flex min-h-screen items-center justify-center bg-background px-6"><div className="max-w-md rounded-2xl border bg-card p-8 text-center shadow-sm"><Cloud className="mx-auto size-10 text-primary" /><h1 className="mt-4 text-xl font-semibold">请使用 Agents Plus 桌面应用</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Next.js 预览页面不会直接访问本机文件或发送凭据。请运行 npm run tauri dev，客户端会通过 Tauri 安全桥接连接真实后端。</p></div></main>;
+  if (!controller.desktop) return <DesktopRequiredState />;
   if (controller.state.status === "loading" && !controller.state.identity)
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <RefreshCw className="animate-spin" />
-          正在读取本机和后端状态
-        </div>
-      </main>
-    );
-  if (controller.state.status === "signedOut" || !controller.state.user)
+    return <LoadingState />;
+  if (controller.state.status === "signedOut")
     return (
       <AuthScreen
         identity={controller.state.identity}
         onAuthenticated={controller.loginCompleted}
+      />
+    );
+  if (
+    controller.state.status === "error" ||
+    controller.state.status === "offline"
+  )
+    return (
+      <StartupState
+        message={controller.state.message || "请检查网络连接和系统凭据存储"}
+        onRetry={controller.refresh}
+      />
+    );
+  if (!controller.state.user)
+    return (
+      <StartupState
+        message="登录状态尚未完成恢复，请重试"
+        onRetry={controller.refresh}
       />
     );
   const nav = [
