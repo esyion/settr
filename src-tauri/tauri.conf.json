@@ -4,17 +4,20 @@
   "version": "0.1.0",
   "identifier": "com.msi.agents-plus",
   "build": {
-    "beforeDevCommand": "pnpm dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
-    "frontendDist": "../dist"
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:3000",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../out",
+    "removeUnusedCommands": true
   },
   "app": {
     "windows": [
       {
-        "title": "agents-plus",
-        "width": 800,
-        "height": 600
+        "title": "Agents Plus",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 900,
+        "minHeight": 620
       }
     ],
     "security": {

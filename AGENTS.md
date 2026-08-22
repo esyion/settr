@@ -5,7 +5,7 @@
 ## 1. 项目定位与技术栈
 
 - 桌面应用框架：Tauri 2。
-- 前端：React + TypeScript + Vite。
+- 前端：Next.js App Router + React + TypeScript + Tailwind CSS + shadcn/ui。
 - Rust 端：Rust 2021 edition。
 - 前端与 Rust 的唯一跨边界通信方式：Tauri IPC，包括 invoke、事件和插件 API。
 - 默认目录：
@@ -27,9 +27,8 @@
 
     .
     ├─ src/                                  # 前端表示层
-    │  ├─ app/                               # 启动、路由、Provider、错误边界
-    │  ├─ pages/                             # 页面级组合，不承载底层业务规则
-    │  ├─ features/                          # 按业务能力拆分的垂直切片
+    │  ├─ app/                               # Next.js App Router、布局、页面、全局样式
+        │  ├─ features/                          # 按业务能力拆分的垂直切片
     │  │  └─ <feature>/
     │  │     ├─ components/                  # 业务组件
     │  │     ├─ hooks/                       # UI 和交互 hooks
@@ -41,8 +40,7 @@
     │  ├─ services/                          # IPC gateway、storage、通知等
     │  ├─ stores/                            # 客户端状态
     │  ├─ lib/                               # 纯函数、格式化、校验、常量
-    │  ├─ styles/                            # 全局样式、主题、设计令牌
-    │  └─ main.tsx                           # 前端入口
+        │  └─ lib/                               # shadcn cn()、纯函数、格式化和常量
     ├─ src-tauri/
     │  ├─ src/
     │  │  ├─ main.rs                         # 进程入口，只负责启动 lib::run
@@ -66,7 +64,7 @@
 
 ### 4.1 前端表示层
 
-- 页面、组件和 hooks 只处理渲染、用户交互、加载态、空态和错误展示。
+- Next.js 页面、组件和 hooks 只处理渲染、用户交互、加载态、空态和错误展示。Tauri 前端必须保持可静态导出，禁止依赖 SSR、Server Actions、Route Handlers 或服务端运行时。
 - 业务能力按 features/<feature> 组织，禁止把所有逻辑集中在 App.tsx。
 - 前端调用 Rust 时，统一经过 feature 的 api.ts 或 services/ipc gateway；组件内禁止散落 invoke 调用。
 - 不在前端复制 Rust 端的核心业务规则；前端校验只用于提升交互体验，服务端校验才是最终约束。
@@ -154,7 +152,7 @@
 - 组件名、类型名使用 PascalCase；变量、函数和文件名使用 camelCase；常量使用 UPPER_SNAKE_CASE。
 - 类型优先使用 type，需要声明合并或实现契约时使用 interface。
 - 副作用集中到 hooks 和 services；渲染函数保持纯净。
-- 公共组件必须有清晰 props 类型、可访问名称、键盘操作和必要的 aria 属性。
+- 公共组件必须优先组合 shadcn/ui 组件，并具有清晰 props 类型、可访问名称、键盘操作和必要的 aria 属性。样式使用 Tailwind CSS 语义令牌，禁止在业务组件中重复实现已有 shadcn/ui 组件。
 
 ### Rust
 
@@ -168,7 +166,7 @@
 
 提交前至少执行：
 
-    pnpm build
+    npm run build
     cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
     cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
     cargo test --manifest-path src-tauri/Cargo.toml
