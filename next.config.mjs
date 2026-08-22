@@ -7,6 +7,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  allowedDevOrigins: ["10.66.66.2"],
   assetPrefix: isProd ? undefined : `http://${internalHost}:3000`,
 };
 
