@@ -5,5 +5,12 @@ import nextTypeScript from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTypeScript,
-  globalIgnores(["out/**", ".next/**", "next-env.d.ts"]),
+  globalIgnores([
+    "out/**",
+    ".next/**",
+    "src-tauri/target/**",
+    "src/components/ui/**",
+    "src/hooks/**",
+    "next-env.d.ts",
+  ]),
 ]);

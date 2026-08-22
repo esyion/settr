@@ -1,0 +1,85 @@
+import { api, loadRuntimeSnapshot } from "@/lib/api-client";
+import type { Revision, SyncState, SyncStatus } from "@/lib/contracts";
+import { loadSession } from "@/lib/session-store";
+
+export const APP_VERSION = "0.1.0";
+export const EMPTY_STATE: SyncState = {
+  status: "loading",
+  local: null,
+  identity: null,
+  user: null,
+  document: null,
+  head: null,
+  base: null,
+  devices: [],
+  revisions: null,
+  message: null,
+  requestId: null,
+  refreshedAt: null,
+};
+
+export function deriveStatus(
+  state: Pick<SyncState, "local" | "document" | "head">,
+): SyncStatus {
+  const local = state.local;
+  const head = state.head;
+  const document = state.document;
+  if (!local || !document) return "loading";
+  if (!head && local.exists) return "localOnly";
+  if (!head && !local.exists) return "initialChoice";
+  if (!local.exists) return "remoteModified";
+  if (local.contentHash === head?.contentHash) return "synced";
+  if (!local.manifest.baseRevisionId || !local.manifest.baseContentHash)
+    return "initialChoice";
+  const localChanged = local.contentHash !== local.manifest.baseContentHash;
+  const remoteChanged =
+    document.headRevisionId !== local.manifest.baseRevisionId;
+  if (localChanged && remoteChanged) return "conflict";
+  return localChanged ? "localModified" : "remoteModified";
+}
+
+export async function loadWorkspace(): Promise<SyncState> {
+  const runtime = await loadRuntimeSnapshot(APP_VERSION);
+  const session = await loadSession();
+  if (!session)
+    return {
+      ...EMPTY_STATE,
+      status: "signedOut",
+      local: runtime.local,
+      identity: runtime.identity,
+      message: "请登录后连接云端",
+    };
+  const user = await api.me();
+  const document = await api.document();
+  const [devices, revisions] = await Promise.all([
+    api.devices(),
+    api.revisions(document.id, 1, 20),
+  ]);
+  let head: Revision | null = null;
+  let base: Revision | null = null;
+  if (document.headRevisionId)
+    head = await api.revision(document.id, document.headRevisionId);
+  if (
+    runtime.local.manifest.baseRevisionId &&
+    runtime.local.manifest.baseRevisionId !== document.headRevisionId
+  )
+    base = await api.revision(
+      document.id,
+      runtime.local.manifest.baseRevisionId,
+    );
+  const status = deriveStatus({ local: runtime.local, document, head });
+  return {
+    status,
+    local: runtime.local,
+    identity: runtime.identity,
+    user,
+    document,
+    head,
+    base,
+    devices,
+    revisions,
+    message: null,
+    requestId: null,
+    refreshedAt: new Date().toISOString(),
+  };
+}

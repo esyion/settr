@@ -1,5 +1,2 @@
-import { Dashboard } from "@/features/sync/components/dashboard";
-
-export default function HomePage() {
-  return <Dashboard />;
-}
+import { ClientApp } from "@/features/app/components/client-app";
+export default function HomePage() { return <ClientApp />; }

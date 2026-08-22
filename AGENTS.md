@@ -75,6 +75,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ### 4.1 前端表示层
 
+- 单文件代码行数非必要不要超过`300`行
 - Next.js 页面、组件和 hooks 只处理渲染、用户交互、加载态、空态和错误展示。Tauri 前端必须保持可静态导出，禁止依赖 SSR、Server Actions、Route Handlers 或服务端运行时。
 - 业务能力按 features/<feature> 组织，禁止把所有逻辑集中在 App.tsx。
 - 前端调用 Rust 时，统一经过 feature 的 api.ts 或 services/ipc gateway；组件内禁止散落 invoke 调用。
@@ -94,6 +95,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 约束：
 
+- 单文件代码行数非必要不要超过`300`行
 - command 命名使用动作加资源，例如 list_projects、create_project。
 - 不在 command 中直接访问文件系统、数据库、网络或调用操作系统命令。
 - 不返回 any、调试字符串或 Rust 内部错误堆栈。

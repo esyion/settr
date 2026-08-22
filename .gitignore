@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .next
 out/*
+.env
+.env.*
+!.env.example
