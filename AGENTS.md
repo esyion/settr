@@ -25,6 +25,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## 2. 核心原则
 
+0. 所有的方法必须要加docstring
 1. **分层依赖单向流动**：表示层 → 应用层 → 领域层；基础设施层为领域层和应用层提供实现，但业务层不得依赖 UI 或 Tauri 运行时细节。
 2. **IPC 是边界，不是业务层**：Tauri command 只负责参数接收、边界校验、权限检查、调用用例和结果序列化，不在 command 中堆积业务逻辑。
 3. **显式数据契约**：前后端传输使用稳定 DTO，字段命名、可空性和错误结构必须明确；禁止直接把内部实体、数据库模型或第三方库类型暴露给前端。
