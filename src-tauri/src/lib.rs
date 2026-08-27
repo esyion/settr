@@ -2,29 +2,59 @@ mod commands;
 mod hash;
 mod infrastructure;
 use tauri::Manager;
+use tauri_plugin_deep_link::DeepLinkExt;
+use tauri::Emitter;
+/// 密码重置深链使用的协议头，与后端 {@code agents.auth.password-reset.reset-url-scheme} 和前端
+/// {@link \@/lib/deep-link.ts} 中的常量保持一致。
+const RESET_DEEP_LINK_SCHEME: &str = "agentsplus";
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// Builds and runs the Agents Plus Tauri application.
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
 
-    #[cfg(target_os = "windows")]
+      #[cfg(target_os = "windows")]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-        if let Err(error) = app
-            .get_webview_window("main")
-            .ok_or_else(|| "未找到主窗口".to_string())
-            .and_then(|window| {
-                window.show().map_err(|error| error.to_string())?;
-                window.set_focus().map_err(|error| error.to_string())
-            })
-        {
-            eprintln!("聚焦已有实例窗口失败: {error}");
+        if let Some(window) = app.get_webview_window("main") {
+            if let Err(error) = window.show() {
+                eprintln!("聚焦已有实例窗口失败: {error}");
+            }
+            if let Err(error) = window.set_focus() {
+                eprintln!("聚焦已有实例窗口失败: {error}");
+            }
+        }
+        let urls: Vec<String> = _args
+            .iter()
+            .filter(|arg| arg.starts_with(RESET_DEEP_LINK_SCHEME))
+            .cloned()
+            .collect();
+        if !urls.is_empty() {
+            // 直接向所有窗口发送深链事件，无需调用 on_open_url
+            if let Err(error) = app.emit("deep-link://new-url", urls) {
+                eprintln!("派发深链事件到已有实例失败: {error}");
+            }
         }
     }));
-
-    builder
+      builder
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
+            #[cfg(any(windows, target_os = "linux"))]
+            {
+                if let Err(error) = app.deep_link().register(RESET_DEEP_LINK_SCHEME) {
+                    eprintln!("注册深链协议失败: {error}");
+                }
+            }
+
+            let handle = app.handle().clone();
+            // 此回调已在正常启动时注册，用于处理深链 URL
+            app.deep_link().on_open_url(move |event| {
+                let urls: Vec<String> = event.urls().iter().map(|url| url.to_string()).collect();
+                if let Err(error) = handle.emit("deep-link://new-url", urls) {
+                    eprintln!("派发深链事件失败: {error}");
+                }
+            });
+
             let watcher = infrastructure::local_watcher::LocalFileWatcher::start(app.handle())
                 .map_err(std::io::Error::other)?;
             app.manage(watcher);
