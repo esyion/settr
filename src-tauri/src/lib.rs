@@ -1,4 +1,5 @@
 mod commands;
+pub mod hash;
 mod infrastructure;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

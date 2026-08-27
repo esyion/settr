@@ -1,6 +1,7 @@
 import { api, ApiClientError, loadRuntimeSnapshot } from "@/lib/api-client";
 import type { Revision, SyncState, SyncStatus } from "@/lib/contracts";
 import { clearSession, loadSession } from "@/lib/session-store";
+import { normalizeContentHash } from "@/features/sync/hash";
 
 export const APP_VERSION = "0.1.0";
 export const EMPTY_STATE: SyncState = {
@@ -28,10 +29,18 @@ export function deriveStatus(
   if (!head && local.exists) return "localOnly";
   if (!head && !local.exists) return "initialChoice";
   if (!local.exists) return "remoteModified";
-  if (local.contentHash === head?.contentHash) return "synced";
+  if (
+    head &&
+    local.contentHash &&
+    normalizeContentHash(local.contentHash) ===
+      normalizeContentHash(head.contentHash)
+  )
+    return "synced";
   if (!local.manifest.baseRevisionId || !local.manifest.baseContentHash)
     return "initialChoice";
-  const localChanged = local.contentHash !== local.manifest.baseContentHash;
+  const localChanged =
+    normalizeContentHash(local.contentHash || "") !==
+    normalizeContentHash(local.manifest.baseContentHash);
   const remoteChanged =
     document.headRevisionId !== local.manifest.baseRevisionId;
   if (localChanged && remoteChanged) return "conflict";

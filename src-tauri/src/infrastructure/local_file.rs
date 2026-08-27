@@ -3,8 +3,8 @@ use super::local_paths::{
     app_dir, device_path, ensure_app_dir, ensure_primary_document, legacy_device_path,
     legacy_manifest_path, manifest_path,
 };
+use crate::hash::sha256_hex;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -83,10 +83,6 @@ fn read_manifest() -> Result<LocalManifest, String> {
     }
     Ok(manifest)
 }
-fn hash_content(content: &str) -> String {
-    let digest = Sha256::digest(content.as_bytes());
-    format!("sha256:{digest:x}")
-}
 fn modified_at_ms(metadata: &fs::Metadata) -> Option<u64> {
     metadata
         .modified()
@@ -119,7 +115,7 @@ pub fn read_snapshot() -> Result<LocalFileSnapshot, String> {
         display_path: "~/AGENTS.md".to_string(),
         bytes: content.len() as u64,
         modified_at_ms: modified_at_ms(&metadata),
-        content_hash: Some(hash_content(&content)),
+        content_hash: Some(sha256_hex(&content)),
         content: Some(content),
         manifest,
     })

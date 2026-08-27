@@ -19,7 +19,7 @@ import { isTauriRuntime } from "@/lib/tauri";
 import { useDeviceMaintenance } from "@/features/sync/use-device-maintenance";
 import { useSyncStore } from "@/features/sync/store/sync-store";
 import { mergeDocuments } from "@/lib/merge";
-import { sha256 } from "@/features/sync/hash";
+import { normalizeContentHash, sha256 } from "@/features/sync/hash";
 import {
   APP_VERSION,
   EMPTY_STATE,
@@ -65,7 +65,18 @@ export function useSyncController() {
   }, [refresh]);
   const onLocalSnapshot = useCallback((local: SyncState["local"]) => {
     if (!local) return;
-    setState((previous) => ({ ...previous, local, status: previous.document && previous.head && local.contentHash === previous.head.contentHash ? "synced" : previous.status }));
+    setState((previous) => ({
+      ...previous,
+      local,
+      status:
+        previous.document &&
+        previous.head &&
+        local.contentHash &&
+        normalizeContentHash(local.contentHash) ===
+          normalizeContentHash(previous.head.contentHash)
+          ? "synced"
+          : previous.status,
+    }));
   }, [setState]);
   const onMaintenanceError = useCallback((error: unknown) => setNotice(readableError(error)), [setNotice]);
   useDeviceMaintenance({ identity: state.identity, active: Boolean(state.user), document: state.document, head: state.head, onLocalSnapshot, onError: onMaintenanceError });
@@ -167,7 +178,7 @@ export function useSyncController() {
       const revision = await api.submitRevision(state.document.id, {
         parentRevisionId: state.head.id,
         content: mergeDraft,
-        contentHash: "sha256:" + (await sha256(mergeDraft)),
+        contentHash: await sha256(mergeDraft),
         message: "提交三方合并结果",
         clientMutationId: crypto.randomUUID(),
         metadata: { source: "merge", baseRevisionId: state.base?.id || null },
