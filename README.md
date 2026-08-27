@@ -44,6 +44,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - [项目开发规范](./AGENTS.md)
 - [系统设计方案](./docs/AGENTS-SYNC-SYSTEM-DESIGN.md)
 - [UI 设计系统](./design-system/agents-plus/MASTER.md)
+- [功能说明](./docs/功能说明/桌面端基础设施依赖.md)
 
 ## 产品摘要
 
@@ -51,7 +52,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 ## TODO
 
-- [ ] 将本地文件轮询替换为操作系统级文件监听。
+- [x] 将本地文件轮询替换为操作系统级文件监听。
 - [ ] 增加离线上传队列、失败重试和网络恢复补偿。
 - [ ] 增加本地版本与云端版本的 unified diff 查看。
 - [ ] 增加上传前的 API Key、Token、密码和私钥扫描。

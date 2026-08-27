@@ -25,6 +25,7 @@ import {
   EMPTY_STATE,
   loadWorkspace,
 } from "@/features/sync/sync-state";
+/** Converts an unknown failure into a user-facing message with request context. */
 function readableError(error: unknown) {
   if (error instanceof ApiClientError)
     return (
@@ -34,6 +35,7 @@ function readableError(error: unknown) {
   if (error instanceof Error) return error.message;
   return "发生未知错误";
 }
+/** Returns whether an error indicates that the desktop cannot reach its backend. */
 function isOfflineError(error: unknown) {
   return (
     error instanceof Error &&
@@ -41,8 +43,10 @@ function isOfflineError(error: unknown) {
       error.message.startsWith("DESKTOP_RUNTIME_REQUIRED"))
   );
 }
+/** Coordinates workspace loading, local changes, remote revisions, and user actions. */
 export function useSyncController() {
   const { state, busy, notice, mergeDraft, setState, setBusy, setNotice, setMergeDraft } = useSyncStore();
+  /** Refreshes the complete local and remote synchronization state. */
   const refresh = useCallback(async () => {
     setBusy("refresh");
     setState((previous) => ({ ...previous, status: "loading", message: null }));
@@ -63,6 +67,7 @@ export function useSyncController() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  /** Applies a newly observed local snapshot to the synchronization store. */
   const onLocalSnapshot = useCallback((local: SyncState["local"]) => {
     if (!local) return;
     setState((previous) => ({
@@ -78,8 +83,10 @@ export function useSyncController() {
           : previous.status,
     }));
   }, [setState]);
+  /** Displays errors produced by local maintenance tasks. */
   const onMaintenanceError = useCallback((error: unknown) => setNotice(readableError(error)), [setNotice]);
-  useDeviceMaintenance({ identity: state.identity, active: Boolean(state.user), document: state.document, head: state.head, onLocalSnapshot, onError: onMaintenanceError });
+  useDeviceMaintenance({ identity: state.identity, active: Boolean(state.user), document: state.document, onLocalSnapshot, onError: onMaintenanceError });
+  /** Runs a mutating action while exposing a single busy and notice state. */
   async function action(name: string, fn: () => Promise<void>) {
     setBusy(name);
     setNotice(null);
@@ -91,9 +98,11 @@ export function useSyncController() {
       setBusy(null);
     }
   }
+  /** Refreshes the workspace after successful authentication. */
   async function loginCompleted() {
     await refresh();
   }
+  /** Submits the current local document as a new remote revision. */
   async function upload(message: string) {
     await action("upload", async () => {
       if (!state.document || !state.local?.content || !state.local.contentHash)
@@ -125,6 +134,7 @@ export function useSyncController() {
       await refresh();
     });
   }
+  /** Applies a selected remote revision using native backup and atomic replacement. */
   async function apply(revision?: Revision | null) {
     await action("apply", async () => {
       const target = revision || state.head;
@@ -149,6 +159,7 @@ export function useSyncController() {
       await refresh();
     });
   }
+  /** Creates a three-way merge draft from base, local, and remote content. */
   function startMerge() {
     if (!state.local?.content || !state.base?.content || !state.head?.content) {
       setNotice("缺少三方合并所需的 base、local 或 remote 内容，请先刷新");
@@ -166,6 +177,7 @@ export function useSyncController() {
         : "三方合并成功，请确认后提交新版本",
     );
   }
+  /** Commits and applies the user-confirmed three-way merge result. */
   async function resolveMerge() {
     await action("merge", async () => {
       if (
@@ -200,6 +212,7 @@ export function useSyncController() {
       await refresh();
     });
   }
+  /** Revokes the current session and clears local authentication state. */
   async function logout() {
     await action("logout", async () => {
       await api.logout();
@@ -214,6 +227,7 @@ export function useSyncController() {
       }));
     });
   }
+  /** Restores a historical revision by creating and applying a new revision. */
   async function restore(revisionId: string) {
     if (!state.document) return;
     await action("restore", async () => {
@@ -243,6 +257,7 @@ export function useSyncController() {
       await refresh();
     });
   }
+  /** Renames an owned device and refreshes the workspace. */
   async function rename(deviceId: string, name: string) {
     await action("rename:" + deviceId, async () => {
       if (!name.trim()) throw new Error("设备名不能为空");
@@ -250,12 +265,14 @@ export function useSyncController() {
       await refresh();
     });
   }
+  /** Revokes an owned device and refreshes the workspace. */
   async function revoke(deviceId: string) {
     await action("revoke:" + deviceId, async () => {
       await api.revokeDevice(deviceId);
       await refresh();
     });
   }
+  /** Validates and persists the configured backend URL. */
   function saveUrl(value: string) {
     try {
       setApiBaseUrl(value);

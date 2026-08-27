@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { api } from "@/lib/api-client";
 import type { Revision, SyncState } from "@/lib/contracts";
 
+/** Formats a revision timestamp for display. */
 function formatTime(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -26,10 +27,12 @@ function formatTime(value: string) {
         timeStyle: "short",
       }).format(date);
 }
+/** Returns the short display form of a revision hash. */
 function shortHash(value: string) {
   return value.replace(/^sha256:/i, "").slice(0, 12);
 }
 
+/** Renders the revision timeline, revision content, and restore controls. */
 export function Versions({
   state,
   busy,
@@ -45,6 +48,7 @@ export function Versions({
   const [page, setPage] = useState(state.revisions?.page || 1);
   const [loadingMore, setLoadingMore] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<Revision | null>(null);
+  /** Loads a revision's full content into the detail pane. */
   async function open(id: string) {
     if (!state.document) return;
     setLoadingId(id);
@@ -54,6 +58,7 @@ export function Versions({
       setLoadingId(null);
     }
   }
+  /** Loads the next page of revision summaries. */
   async function loadMore() {
     if (!state.document || !state.revisions || page >= state.revisions.pages) return;
     setLoadingMore(true);

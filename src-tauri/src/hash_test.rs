@@ -1,5 +1,6 @@
-use agents_plus_lib::hash::sha256_hex;
+use super::sha256_hex;
 
+/// Verifies that the shared hash helper emits the canonical API representation.
 #[test]
 fn uses_canonical_hash_without_algorithm_prefix() {
     assert_eq!(

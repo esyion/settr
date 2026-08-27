@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { SyncState, SyncStatus } from "@/lib/contracts";
 
+/** Formats an ISO timestamp or epoch value for the Chinese locale. */
 export function formatTime(value: string | number | null | undefined) {
   if (value === null || value === undefined) return "—";
   const date = new Date(value);
@@ -19,14 +20,17 @@ export function formatTime(value: string | number | null | undefined) {
     timeStyle: "short",
   }).format(date);
 }
+/** Formats a byte count using a compact human-readable unit. */
 export function formatBytes(bytes: number) {
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / 1024 / 1024).toFixed(1) + " MB";
 }
+/** Returns a short display form of a content hash. */
 export function shortHash(value: string | null | undefined) {
   return value ? value.replace(/^sha256:/i, "").slice(0, 12) : "—";
 }
+/** Maps a synchronization state to its localized label. */
 export function statusLabel(status: SyncStatus) {
   return {
     loading: "加载中",
@@ -41,6 +45,7 @@ export function statusLabel(status: SyncStatus) {
     error: "同步错误",
   }[status];
 }
+/** Renders a localized synchronization status badge. */
 export function StatusBadge({ status }: { status: SyncStatus }) {
   const variant =
     status === "synced"
@@ -55,6 +60,7 @@ export function StatusBadge({ status }: { status: SyncStatus }) {
   return <Badge variant={variant}>{statusLabel(status)}</Badge>;
 }
 
+/** Renders the summary cards for the current synchronization state. */
 export function OverviewSummary({ state }: { state: SyncState }) {
   const head = state.head;
   return (

@@ -22,6 +22,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - 默认目录：
   - src/：前端应用。
   - src-tauri/：Rust 宿主、命令、领域能力、插件和打包配置。
+  - ../settr-server: 后端服务
 
 ## 2. 核心原则
 
@@ -133,6 +134,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - 请求和响应字段使用 camelCase；Rust 内部字段可使用 snake_case，但通过 serde 显式映射。
 - DTO 只包含跨边界所需字段，避免传输大对象、敏感信息和不可控的动态结构。
+- 所有跨前后端、IPC、缓存和本地持久化的 ID 字段必须统一使用 `string`；禁止将雪花 ID、数据库主键或会话标识定义、传输或落盘为 `number` / `bigint`，也禁止用 `parseInt` / `Number` 进行类型收窄。
 - 错误码稳定、可枚举、可用于前端分支判断；用户文案与错误码解耦。
 - 对分页、排序、过滤、日期、金额和路径等类型定义统一格式，不依赖隐式约定。
 - 变更契约时优先向后兼容；删除字段或 command 前先迁移所有调用方，并更新 docs/。

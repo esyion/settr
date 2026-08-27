@@ -5,3 +5,7 @@ pub fn sha256_hex(content: &str) -> String {
     let digest = Sha256::digest(content.as_bytes());
     format!("{digest:x}")
 }
+
+#[cfg(test)]
+#[path = "hash_test.rs"]
+mod hash_test;

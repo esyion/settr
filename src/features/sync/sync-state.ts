@@ -19,6 +19,7 @@ export const EMPTY_STATE: SyncState = {
   refreshedAt: null,
 };
 
+/** Derives the user-visible synchronization state from local and remote snapshots. */
 export function deriveStatus(
   state: Pick<SyncState, "local" | "document" | "head">,
 ): SyncStatus {
@@ -47,10 +48,12 @@ export function deriveStatus(
   return localChanged ? "localModified" : "remoteModified";
 }
 
+/** Returns whether an API failure means the saved authentication session is unusable. */
 function isAuthenticationError(error: unknown) {
   return error instanceof ApiClientError && [40100, 40101, 40102, 40103].includes(error.code);
 }
 
+/** Loads the local snapshot and all authenticated remote synchronization state. */
 export async function loadWorkspace(): Promise<SyncState> {
   const runtime = await loadRuntimeSnapshot(APP_VERSION);
   const session = await loadSession();

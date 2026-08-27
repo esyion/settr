@@ -61,6 +61,7 @@ pub struct SaveManifestRequest {
     pub manifest: LocalManifest,
 }
 
+/// Reads the persisted synchronization manifest, including the legacy location when present.
 fn read_manifest() -> Result<LocalManifest, String> {
     let path = manifest_path()?;
     let source = if path.exists() {
@@ -83,6 +84,7 @@ fn read_manifest() -> Result<LocalManifest, String> {
     }
     Ok(manifest)
 }
+/// Converts a filesystem modification timestamp to milliseconds since the Unix epoch.
 fn modified_at_ms(metadata: &fs::Metadata) -> Option<u64> {
     metadata
         .modified()
@@ -92,6 +94,7 @@ fn modified_at_ms(metadata: &fs::Metadata) -> Option<u64> {
         .map(|duration| duration.as_millis() as u64)
 }
 
+/// Reads the local document, metadata, content hash, and synchronization manifest.
 pub fn read_snapshot() -> Result<LocalFileSnapshot, String> {
     let path = ensure_primary_document()?;
     let manifest = read_manifest()?;
@@ -121,6 +124,7 @@ pub fn read_snapshot() -> Result<LocalFileSnapshot, String> {
     })
 }
 
+/// Loads or creates the stable device identity used by the remote API.
 pub fn get_device_identity(app_version: &str) -> Result<DeviceIdentity, String> {
     ensure_app_dir()?;
     let path = device_path()?;
@@ -160,6 +164,7 @@ pub fn get_device_identity(app_version: &str) -> Result<DeviceIdentity, String> 
     Ok(identity)
 }
 
+/// Persists a synchronization manifest using an atomic JSON replacement.
 pub fn save_manifest(mut manifest: LocalManifest) -> Result<LocalManifest, String> {
     ensure_app_dir()?;
     manifest.schema_version = MANIFEST_SCHEMA_VERSION;
@@ -167,6 +172,7 @@ pub fn save_manifest(mut manifest: LocalManifest) -> Result<LocalManifest, Strin
     Ok(manifest)
 }
 
+/// Safely applies remote content after validating the local expected hash and creating a backup.
 pub fn apply_document(request: ApplyDocumentRequest) -> Result<LocalFileSnapshot, String> {
     let path = ensure_primary_document()?;
     let current = read_snapshot()?;
