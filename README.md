@@ -59,7 +59,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - [ ] 检查规则中的重复项、冲突项、过期引用和无效路径。
 - [ ] 提供本地备份列表、备份恢复和备份清理。
 - [ ] 提供 CLI：登录、状态、同步、差异、历史和恢复。
-- [ ] 支持 `CLAUDE.md`、Cursor Rules 和 Copilot Instructions 等规则格式。
+- [ ] 支持 `CLAUDE.md` 等规则格式。
 - [ ] 支持个人、工作区和项目级规则 profile。
 - [ ] 支持多层规则组合与覆盖。
 - [ ] 将规则转换为不同 AI 工具的配置格式。
