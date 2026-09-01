@@ -7,6 +7,7 @@ import type {
   DeviceIdentity,
   Document,
   LocalSnapshot,
+  PasswordResetResponse,
   Revision,
   RevisionSummary,
   TokenResponse,
@@ -199,6 +200,18 @@ export const api = {
       await clearSession();
     }
   },
+  requestPasswordReset: (email: string) =>
+    request<PasswordResetResponse>("/api/v1/auth/forgot-password", {
+      method: "POST",
+      auth: false,
+      body: { email: email.trim() },
+    }),
+  confirmPasswordReset: (token: string, newPassword: string) =>
+    request<PasswordResetResponse>("/api/v1/auth/reset-password", {
+      method: "POST",
+      auth: false,
+      body: { token, newPassword },
+    }),
   me: () => request<CurrentUser>("/api/v1/auth/me"),
   devices: () => request<Device[]>("/api/v1/devices"),
   heartbeat: (deviceId: string) =>

@@ -52,6 +52,9 @@ export interface TokenResponse {
 export interface AuthSession extends TokenResponse {
     accessTokenExpiresAt: number;
 }
+export interface PasswordResetResponse {
+    message: string;
+}
 export interface Document {
     id: string;
     documentType: string;

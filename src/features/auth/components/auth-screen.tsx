@@ -1,23 +1,33 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Cloud, RefreshCw, ShieldCheck, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  api,
-  ApiClientError,
-  getApiBaseUrl,
-  setApiBaseUrl,
-} from "@/lib/api-client";
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { Cloud } from "lucide-react";
+import { clearSession } from "@/lib/session-store";
+import { isTauriRuntime } from "@/lib/tauri";
+import {
+  listenResetDeepLink,
+  readCurrentDeepLink,
+} from "@/lib/deep-link";
 import type { DeviceIdentity } from "@/lib/contracts";
+import { AuthHero } from "@/features/auth/components/auth-hero";
+import { AuthFormPanel } from "@/features/auth/components/auth-form-panel";
+import { ForgotPasswordPanel } from "@/features/auth/components/forgot-password-panel";
+import { ResetPasswordPanel } from "@/features/auth/components/reset-password-panel";
+import { toast } from "sonner";
 
-function errorMessage(error: unknown) {
-  if (error instanceof ApiClientError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "发生未知错误";
-}
+/** 鉴权界面支持的运行模式。 */
+type AuthMode = "login" | "register" | "forgot" | "reset";
 
+/**
+ * 鉴权界面：登录 / 注册 / 忘记密码 / 重置密码四种模式共用同一外壳。
+ * <p>
+ * 父组件只需要在用户退出登录后挂载本组件；重置成功后本组件内部完成清会话并切回登录态。
+ * 忘记密码与重置密码两种模式不依赖 {@link DeviceIdentity}，可独立工作。
+ */
 export function AuthScreen({
   identity,
   onAuthenticated,
@@ -25,77 +35,76 @@ export function AuthScreen({
   identity: DeviceIdentity | null;
   onAuthenticated: () => Promise<void>;
 }) {
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [apiUrl, setApiUrl] = useState(getApiBaseUrl());
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setMessage(null);
-    if (!identity) {
-      setMessage("正在读取设备信息，请稍候");
-      return;
-    }
-    if (mode === "register" && password !== confirmPassword) {
-      setMessage("两次输入的密码不一致");
-      return;
-    }
-    if (
-      mode === "register" &&
-      (!/[A-Z]/.test(password) ||
-        !/[a-z]/.test(password) ||
-        !/[0-9]/.test(password) ||
-        !/[^A-Za-z0-9]/.test(password))
-    ) {
-      setMessage(
-        "密码至少 12 位，并且必须包含大写字母、小写字母、数字和特殊字符",
-      );
-      return;
-    }
-    setBusy(true);
-    try {
-      setApiBaseUrl(apiUrl);
-      if (mode === "register") await api.register(email.trim(), password);
-      await api.login({ email: email.trim(), password, identity });
-      await onAuthenticated();
-    } catch (error) {
-      setMessage(errorMessage(error));
-    } finally {
-      setBusy(false);
-    }
+  const [mode, setMode] = useState<AuthMode>("login");
+  const [pendingResetToken, setPendingResetToken] = useState<string | null>(
+    null,
+  );
+
+  /**
+   * 切到重置密码模式并写入待用 token；用于深链回调和直接调用两种入口。
+   */
+  const enterReset = useCallback((token: string) => {
+    setPendingResetToken(token);
+    setMode("reset");
+  }, []);
+
+  /**
+   * 监听来自 tauri-plugin-deep-link 的重置链接，触发时切换到 reset 模式。
+   * 同时在挂载时拉取一次冷启动深链，覆盖应用启动时 URL 已到达的场景。
+   */
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    let cancelled = false;
+    let unlisten: (() => void) | null = null;
+    void (async () => {
+      const current = await readCurrentDeepLink();
+      if (cancelled) return;
+      if (current && current.kind === "reset-password") {
+        enterReset(current.token);
+      }
+      try {
+        unlisten = await listenResetDeepLink((link) => {
+          if (cancelled) return;
+          enterReset(link.token);
+        });
+      } catch {
+        // 非 Tauri 桌面环境或插件未安装，忽略即可。
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (unlisten) {
+        try {
+          unlisten();
+        } catch {
+          // 卸载时调用方已经释放，吞掉错误即可。
+        }
+      }
+    };
+  }, [enterReset]);
+
+  /**
+   * 重置密码完成回调：清空本地会话、回到登录态并通过 toast 通知用户。
+   */
+  async function handleResetSuccess() {
+    await clearSession();
+    setMode("login");
+    setPendingResetToken(null);
+    toast.success("密码已更新，请重新登录");
   }
+
+  /**
+   * 把任意子模式切回登录态的通用收尾。
+   */
+  function backToLogin() {
+    setMode("login");
+    setPendingResetToken(null);
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6 py-10">
       <div className="grid w-full max-w-4xl overflow-hidden rounded-2xl border bg-card shadow-xl lg:grid-cols-[1fr_1.1fr]">
-        <section className="hidden flex-col justify-between bg-primary p-10 text-primary-foreground lg:flex">
-          <div>
-            <div className="mb-10 flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-primary-foreground/10">
-                <Cloud className="size-5" />
-              </div>
-              <div>
-                <p className="font-mono text-xs text-primary-foreground/60">
-                  ~/AGENTS.md
-                </p>
-                <h1 className="text-xl font-semibold">Agents Plus</h1>
-              </div>
-            </div>
-            <h2 className="max-w-sm text-3xl font-semibold leading-tight">
-              在每台电脑上，保持同一套 Agent 规则。
-            </h2>
-            <p className="mt-4 max-w-sm text-sm leading-6 text-primary-foreground/70">
-              通过真实云端版本链同步本地
-              AGENTS.md。每次覆盖都有备份，发生冲突时不会静默丢失内容。
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-primary-foreground/60">
-            <ShieldCheck className="size-4" />
-            会话凭据保存在系统安全存储中
-          </div>
-        </section>
+        <AuthHero />
         <section className="p-6 sm:p-10">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -108,109 +117,76 @@ export function AuthScreen({
               <h1 className="text-xl font-semibold">Agents Plus</h1>
             </div>
           </div>
-          <div className="mb-8">
-            <p className="text-sm font-medium text-primary">
-              {mode === "login" ? "欢迎回来" : "创建账号"}
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-              {mode === "login" ? "登录到你的同步空间" : "开始跨设备同步"}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {identity
-                ? "当前设备：" + identity.deviceName + " · " + identity.platform
-                : "正在读取当前设备"}
-            </p>
-          </div>
-          <form className="flex flex-col gap-4" onSubmit={submit}>
-            <label className="flex flex-col gap-2 text-sm font-medium">
-              邮箱
-              <Input
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-medium">
-              密码
-              <Input
-                type="password"
-                required
-                minLength={mode === "register" ? 8 : 1}
-                autoComplete={
-                  mode === "login" ? "current-password" : "new-password"
-                }
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={
-                  mode === "register"
-                    ? "至少 12 位，含大小写、数字和符号"
-                    : "输入密码"
-                }
-              />
-            </label>
-            {mode === "register" && (
-              <label className="flex flex-col gap-2 text-sm font-medium">
-                确认密码
-                <Input
-                  type="password"
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  placeholder="再次输入密码"
-                />
-              </label>
-            )}
-
-            {process.env.NODE_ENV == "production" && (
-              <label className="flex flex-col gap-2 text-sm font-medium">
-                后端地址
-                <Input
-                  value={apiUrl}
-                  onChange={(event) => setApiUrl(event.target.value)}
-                  spellCheck={false}
-                />
-              </label>
-            )}
-            {message && (
-              <div
-                className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-                role="alert"
-              >
-                {message}
-              </div>
-            )}
-            <Button
-              type="submit"
-              className="mt-2 w-full"
-              disabled={busy || !identity}
-            >
-              {busy ? (
-                <RefreshCw className="animate-spin" />
-              ) : mode === "login" ? (
-                <Cloud />
-              ) : (
-                <UserPlus />
-              )}
-              {busy ? "处理中" : mode === "login" ? "登录" : "注册并登录"}
-            </Button>
-          </form>
-          <button
-            type="button"
-            className="mt-6 w-full text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            onClick={() => {
-              setMode(mode === "login" ? "register" : "login");
-              setMessage(null);
-            }}
-          >
-            {mode === "login" ? "还没有账号？立即注册" : "已有账号？返回登录"}
-          </button>
+          <AuthHeader mode={mode} identity={identity} />
+          {mode === "forgot" ? (
+            <ForgotPasswordPanel
+              onBack={backToLogin}
+              onSent={() => {
+                // 邮件发送后保持 forgot 模式，由面板自身展示"已发送"态。
+              }}
+            />
+          ) : mode === "reset" && pendingResetToken ? (
+            <ResetPasswordPanel
+              token={pendingResetToken}
+              onSuccess={() => void handleResetSuccess()}
+              onCancel={backToLogin}
+            />
+          ) : (
+            <AuthFormPanel
+              identity={identity}
+              mode={mode === "register" ? "register" : "login"}
+              onSwitchMode={() =>
+                setMode((current) =>
+                  current === "login" ? "register" : "login",
+                )
+              }
+              onAuthenticated={onAuthenticated}
+              onForgotPassword={() => setMode("forgot")}
+            />
+          )}
         </section>
       </div>
     </main>
+  );
+}
+
+/**
+ * 鉴权界面的标题 / 副标题区域；按模式展示不同的引导文案。
+ */
+function AuthHeader({
+  mode,
+  identity,
+}: {
+  mode: AuthMode;
+  identity: DeviceIdentity | null;
+}) {
+  const isAuthMode = mode === "login" || mode === "register";
+  const eyebrow = isAuthMode
+    ? mode === "login"
+      ? "欢迎回来"
+      : "创建账号"
+    : "账号恢复";
+  const title =
+    mode === "login"
+      ? "登录到你的同步空间"
+      : mode === "register"
+        ? "开始跨设备同步"
+        : mode === "forgot"
+          ? "重置你的登录密码"
+          : "设置一个新的登录密码";
+  const caption =
+    mode === "forgot"
+      ? "输入注册邮箱，我们会发送一封带链接的重置邮件"
+      : mode === "reset"
+        ? "邮件中的重置链接已通过本地校验"
+        : identity
+          ? "当前设备：" + identity.deviceName + " · " + identity.platform
+          : "正在读取当前设备";
+  return (
+    <div className="mb-8">
+      <p className="text-sm font-medium text-primary">{eyebrow}</p>
+      <h2 className="mt-2 text-2xl font-semibold tracking-tight">{title}</h2>
+      <p className="mt-2 text-sm text-muted-foreground">{caption}</p>
+    </div>
   );
 }
