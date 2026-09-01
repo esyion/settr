@@ -1,7 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, Copy, Download, FileText, RefreshCw } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+import type { DiffFile } from "@git-diff-view/file";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Copy,
+  Download,
+  FileText,
+  GitCompareArrows,
+  RefreshCw,
+} from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,10 +23,38 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogMedia, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api-client";
 import type { Revision, SyncState } from "@/lib/contracts";
+
+const OPEN_SOURCE_UNIFIED_MODE = 4;
+const DiffView = dynamic(
+  () => import("@git-diff-view/react").then((module) => module.DiffView),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-[420px] w-full" />,
+  },
+);
 
 /** Formats a revision timestamp for display. */
 function formatTime(value: string) {
@@ -31,6 +70,13 @@ function formatTime(value: string) {
 function shortHash(value: string) {
   return value.replace(/^sha256:/i, "").slice(0, 12);
 }
+
+type DiffState = {
+  key: string;
+  file: DiffFile | null;
+  error: string | null;
+  loading: boolean;
+};
 
 /** Renders the revision timeline, revision content, and restore controls. */
 export function Versions({
@@ -48,12 +94,65 @@ export function Versions({
   const [page, setPage] = useState(state.revisions?.page || 1);
   const [loadingMore, setLoadingMore] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<Revision | null>(null);
+  const [detailMode, setDetailMode] = useState<"content" | "diff">("content");
+  const [diffState, setDiffState] = useState<DiffState | null>(null);
+  const localContent = state.local?.content;
+  const diffKey =
+    detailMode === "diff" && selected && localContent !== null && localContent !== undefined
+      ? `${selected.id}:${state.local?.contentHash ?? localContent}`
+      : null;
+
+  /** Builds and disposes the open-source unified diff when its inputs change. */
+  useEffect(() => {
+    if (!diffKey || !selected || localContent === null || localContent === undefined) {
+      return;
+    }
+    let active = true;
+    let generated: DiffFile | null = null;
+    void Promise.resolve()
+      .then(() => {
+        if (!active) return null;
+        setDiffState({ key: diffKey, file: null, error: null, loading: true });
+        return import("@git-diff-view/file");
+      })
+      .then((module) => {
+        if (!module || !active) return;
+        generated = module.generateDiffFile(
+          "local/AGENTS.md",
+          localContent,
+          `revision/${selected.id}/AGENTS.md`,
+          selected.content,
+          "markdown",
+          "markdown",
+        );
+        generated.initTheme("light");
+        generated.init();
+        generated.buildUnifiedDiffLines();
+        setDiffState({ key: diffKey, file: generated, error: null, loading: false });
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setDiffState({
+            key: diffKey,
+            file: null,
+            error: error instanceof Error ? error.message : "无法生成 Unified Diff",
+            loading: false,
+          });
+        }
+      });
+    return () => {
+      active = false;
+      generated?.clear();
+    };
+  }, [diffKey, localContent, selected]);
+
   /** Loads a revision's full content into the detail pane. */
   async function open(id: string) {
     if (!state.document) return;
     setLoadingId(id);
     try {
       setSelected(await api.revision(state.document.id, id));
+      setDetailMode("content");
     } finally {
       setLoadingId(null);
     }
@@ -142,21 +241,94 @@ export function Versions({
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>{selected ? "版本内容" : "选择一个版本"}</CardTitle>
+              <CardTitle>{selected ? "版本详情" : "选择一个版本"}</CardTitle>
               <CardDescription>
                 {selected
                   ? formatTime(selected.createdAt) + " · " + selected.id
-                  : "查看正文、恢复或复制内容"}
+                  : "查看正文、Unified Diff、恢复或复制内容"}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {selected ? (
-                <Textarea
-                  readOnly
-                  value={selected.content}
-                  className="min-h-[420px]"
-                  aria-label="版本正文"
-                />
+                <Tabs
+                  value={detailMode}
+                  onValueChange={(value) =>
+                    setDetailMode(value === "diff" ? "diff" : "content")
+                  }
+                >
+                  <TabsList>
+                    <TabsTrigger value="content">
+                      <FileText />
+                      版本内容
+                    </TabsTrigger>
+                    <TabsTrigger value="diff">
+                      <GitCompareArrows />
+                      Unified Diff
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="content" className="pt-3">
+                    <Textarea
+                      readOnly
+                      value={selected.content}
+                      className="min-h-[420px]"
+                      aria-label="版本正文"
+                    />
+                  </TabsContent>
+                  <TabsContent value="diff" className="pt-3">
+                    {localContent === null || localContent === undefined ? (
+                      <Empty className="min-h-[420px] border">
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <GitCompareArrows />
+                          </EmptyMedia>
+                          <EmptyTitle>无法比较本地文件</EmptyTitle>
+                          <EmptyDescription>
+                            本机尚未找到可用于比较的 ~/AGENTS.md。
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    ) : diffState?.key === diffKey && diffState.error ? (
+                      <Alert variant="destructive">
+                        <AlertCircle />
+                        <AlertTitle>Unified Diff 生成失败</AlertTitle>
+                        <AlertDescription>{diffState.error}</AlertDescription>
+                      </Alert>
+                    ) : diffState?.key !== diffKey || diffState.loading || !diffState.file ? (
+                      <Skeleton className="h-[420px] w-full" />
+                    ) : diffState.file.additionLength === 0 &&
+                      diffState.file.deletionLength === 0 ? (
+                      <Empty className="min-h-[420px] border">
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <GitCompareArrows />
+                          </EmptyMedia>
+                          <EmptyTitle>没有差异</EmptyTitle>
+                          <EmptyDescription>
+                            当前本地文件与所选云端版本内容一致。
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    ) : (
+                      <div className="overflow-hidden rounded-lg border">
+                        <div className="flex flex-wrap items-center gap-2 border-b bg-muted px-3 py-2">
+                          <Badge variant="outline">
+                            +{diffState.file.additionLength} 行
+                          </Badge>
+                          <Badge variant="outline">
+                            -{diffState.file.deletionLength} 行
+                          </Badge>
+                        </div>
+                        <DiffView
+                          diffFile={diffState.file}
+                          diffViewMode={OPEN_SOURCE_UNIFIED_MODE}
+                          diffViewTheme="light"
+                          diffViewHighlight
+                          diffViewWrap
+                        />
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               ) : (
                 <div className="flex min-h-[420px] items-center justify-center text-sm text-muted-foreground">
                   从左侧选择版本

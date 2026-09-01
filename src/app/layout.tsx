@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "@git-diff-view/react/styles/diff-view-pure.css";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 export const metadata: Metadata = {
