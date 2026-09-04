@@ -17,7 +17,7 @@ export function AuthHero() {
           </div>
           <div>
             <p className="font-mono text-xs text-primary-foreground/60">
-              ~/AGENTS.md
+              AGENTS.md / CLAUDE.md
             </p>
             <h1 className="text-xl font-semibold">Agents Plus</h1>
           </div>
@@ -27,7 +27,7 @@ export function AuthHero() {
         </h2>
         <p className="mt-4 max-w-sm text-sm leading-6 text-primary-foreground/70">
           通过真实云端版本链同步本地
-          AGENTS.md。每次覆盖都有备份，发生冲突时不会静默丢失内容。
+          AGENTS.md 与 ~/.claude/CLAUDE.md。每次覆盖都有备份，发生冲突时不会静默丢失内容。
         </p>
       </div>
       <div className="flex items-center gap-2 text-xs text-primary-foreground/60">

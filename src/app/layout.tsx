@@ -4,7 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 export const metadata: Metadata = {
   title: "Agents Plus",
-  description: "跨设备同步和管理 ~/AGENTS.md",
+  description: "跨设备同步和管理 AGENTS.md 与 CLAUDE.md",
 };
 export default function RootLayout({
   children,

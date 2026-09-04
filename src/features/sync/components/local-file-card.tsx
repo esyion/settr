@@ -7,13 +7,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import type { LocalSnapshot } from "@/lib/contracts";
+import type { DocumentFormat, LocalSnapshot } from "@/lib/contracts";
+import { getDocumentFormatConfig } from "@/lib/document-formats";
 import {
   formatBytes,
   formatTime,
   shortHash,
 } from "@/features/sync/components/overview-summary";
-export function LocalFileCard({ local }: { local: LocalSnapshot | null }) {
+export function LocalFileCard({
+  format,
+  local,
+}: {
+  format: DocumentFormat;
+  local: LocalSnapshot | null;
+}) {
+  const config = getDocumentFormatConfig(format);
   return (
     <div className="flex flex-col gap-6">
       {" "}
@@ -49,9 +57,9 @@ export function LocalFileCard({ local }: { local: LocalSnapshot | null }) {
             </>
           ) : (
             <div className="rounded-lg border border-dashed p-5 text-sm">
-              <p className="font-medium">本机尚未找到 AGENTS.md</p>
+              <p className="font-medium">本机尚未找到 {config.label}</p>
               <p className="mt-1 text-muted-foreground">
-                请先在 ~/AGENTS.md 创建文件，或从云端应用版本。
+                请先在 {config.displayPath} 创建文件，或从云端应用版本。
               </p>
             </div>
           )}
@@ -69,7 +77,7 @@ export function LocalFileCard({ local }: { local: LocalSnapshot | null }) {
             <Textarea
               value={local.content}
               readOnly
-              aria-label="当前本地 AGENTS.md"
+              aria-label={`当前本地 ${config.label}`}
               className="min-h-[280px]"
             />
           </CardContent>

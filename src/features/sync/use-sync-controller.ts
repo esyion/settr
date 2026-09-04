@@ -9,10 +9,12 @@ import {
   setApiBaseUrl,
 } from "@/lib/api-client";
 import type {
+  DocumentFormat,
   LocalManifest,
   Revision,
   SyncState,
 } from "@/lib/contracts";
+import { getDocumentFormatConfig } from "@/lib/document-formats";
 import { clearSession } from "@/lib/session-store";
 import { toast } from "sonner";
 import { isTauriRuntime } from "@/lib/tauri";
@@ -46,12 +48,13 @@ function isOfflineError(error: unknown) {
 /** Coordinates workspace loading, local changes, remote revisions, and user actions. */
 export function useSyncController() {
   const { state, busy, notice, mergeDraft, setState, setBusy, setNotice, setMergeDraft } = useSyncStore();
-  /** Refreshes the complete local and remote synchronization state. */
-  const refresh = useCallback(async () => {
+  /** Refreshes the complete local and remote state for the selected rule format. */
+  const refresh = useCallback(async (requestedFormat?: DocumentFormat) => {
+    const format = requestedFormat ?? useSyncStore.getState().state.format;
     setBusy("refresh");
     setState((previous) => ({ ...previous, status: "loading", message: null }));
     try {
-      const next = await loadWorkspace();
+      const next = await loadWorkspace(format);
       setState(next);
       setNotice(null);
     } catch (error) {
@@ -85,7 +88,14 @@ export function useSyncController() {
   }, [setState]);
   /** Displays errors produced by local maintenance tasks. */
   const onMaintenanceError = useCallback((error: unknown) => setNotice(readableError(error)), [setNotice]);
-  useDeviceMaintenance({ identity: state.identity, active: Boolean(state.user), document: state.document, onLocalSnapshot, onError: onMaintenanceError });
+  useDeviceMaintenance({
+    format: state.format,
+    identity: state.identity,
+    active: Boolean(state.user),
+    document: state.document,
+    onLocalSnapshot,
+    onError: onMaintenanceError,
+  });
   /** Runs a mutating action while exposing a single busy and notice state. */
   async function action(name: string, fn: () => Promise<void>) {
     setBusy(name);
@@ -102,16 +112,27 @@ export function useSyncController() {
   async function loginCompleted() {
     await refresh();
   }
+  /** Switches the workspace to another supported rule format. */
+  async function selectFormat(format: DocumentFormat) {
+    if (format === state.format) return;
+    await action("format", async () => {
+      setMergeDraft(null);
+      setState((previous) => ({ ...previous, format }));
+      await refresh(format);
+    });
+  }
   /** Submits the current local document as a new remote revision. */
   async function upload(message: string) {
     await action("upload", async () => {
       if (!state.document || !state.local?.content || !state.local.contentHash)
-        throw new Error("本地 AGENTS.md 不存在或为空");
+        throw new Error(`本地 ${getDocumentFormatConfig(state.format).label} 不存在或为空`);
       const revision = await api.submitRevision(state.document.id, {
         parentRevisionId: state.head?.id || null,
         content: state.local.content,
         contentHash: state.local.contentHash,
-        message: message.trim() || "从当前设备上传 AGENTS.md",
+        message:
+          message.trim() ||
+          `从当前设备上传 ${getDocumentFormatConfig(state.format).label}`,
         clientMutationId: crypto.randomUUID(),
         metadata: {
           source: "desktop",
@@ -119,7 +140,7 @@ export function useSyncController() {
           appVersion: APP_VERSION,
         },
       });
-      await saveLocalManifest({
+      await saveLocalManifest(state.format, {
         ...state.local.manifest,
         schemaVersion: 1,
         documentId: state.document.id,
@@ -151,6 +172,7 @@ export function useSyncController() {
         localContentHash: target.contentHash,
       };
       await applyRemoteDocument(
+        state.format,
         target.content,
         state.local?.contentHash || null,
         manifest,
@@ -206,7 +228,12 @@ export function useSyncController() {
         lastSyncedAt: new Date().toISOString(),
         localContentHash: revision.contentHash,
       };
-      await applyRemoteDocument(mergeDraft, state.local.contentHash, manifest);
+      await applyRemoteDocument(
+        state.format,
+        mergeDraft,
+        state.local.contentHash,
+        manifest,
+      );
       setMergeDraft(null);
       setNotice("已提交并应用合并版本 " + revision.id);
       await refresh();
@@ -221,6 +248,7 @@ export function useSyncController() {
       setState((previous) => ({
         ...EMPTY_STATE,
         status: "signedOut",
+        format: previous.format,
         local: previous.local,
         identity: previous.identity,
         message: "已退出登录",
@@ -248,6 +276,7 @@ export function useSyncController() {
         localContentHash: revision.contentHash,
       };
       await applyRemoteDocument(
+        state.format,
         revision.content,
         state.local?.contentHash || null,
         manifest,
@@ -288,6 +317,7 @@ export function useSyncController() {
     mergeDraft,
     setMergeDraft,
     refresh,
+    selectFormat,
     loginCompleted,
     upload,
     apply,

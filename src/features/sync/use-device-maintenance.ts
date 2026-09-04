@@ -2,7 +2,12 @@
 
 import { useEffect } from "react";
 import { api } from "@/lib/api-client";
-import type { DeviceIdentity, LocalSnapshot, SyncState } from "@/lib/contracts";
+import type {
+  DeviceIdentity,
+  DocumentFormat,
+  LocalSnapshot,
+  SyncState,
+} from "@/lib/contracts";
 import { invokeNative, isTauriRuntime } from "@/lib/tauri";
 import { listenLocalFileChanged } from "@/features/sync/api";
 
@@ -10,13 +15,14 @@ import { listenLocalFileChanged } from "@/features/sync/api";
  * Maintains the local snapshot from native file-system events and sends device heartbeats.
  */
 export function useDeviceMaintenance(input: {
+  format: DocumentFormat;
   identity: DeviceIdentity | null;
   active: boolean;
   document: SyncState["document"];
   onLocalSnapshot: (local: LocalSnapshot) => void;
   onError: (error: unknown) => void;
 }) {
-  const { identity, active, document, onLocalSnapshot, onError } = input;
+  const { format, identity, active, document, onLocalSnapshot, onError } = input;
   /** Subscribes to native local-file events while the authenticated document is active. */
   useEffect(() => {
     if (!active || !document || !isTauriRuntime()) return;
@@ -25,7 +31,7 @@ export function useDeviceMaintenance(input: {
     /** Reads the native local snapshot and forwards it to the synchronization store. */
     const checkLocal = async () => {
       try {
-        const local = await invokeNative<LocalSnapshot>("get_local_snapshot");
+        const local = await invokeNative<LocalSnapshot>("get_local_snapshot", { format });
         if (!cancelled) onLocalSnapshot(local);
       } catch (error) {
         if (!cancelled) onError(error);
@@ -60,7 +66,7 @@ export function useDeviceMaintenance(input: {
       if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
       void unlistenPromise.then((unlisten) => unlisten?.());
     };
-  }, [active, document, onLocalSnapshot, onError]);
+  }, [active, document, format, onLocalSnapshot, onError]);
   /** Maintains the server-side last-seen time for the current device. */
   useEffect(() => {
     const deviceId = identity?.deviceId;

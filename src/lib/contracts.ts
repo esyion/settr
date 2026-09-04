@@ -1,4 +1,5 @@
 export type Platform = "windows" | "macos" | "linux";
+export type DocumentFormat = "agentsMd" | "claudeMd";
 
 export interface ApiResponse<T> {
     code: number;
@@ -108,6 +109,7 @@ export type SyncStatus =
     | "error";
 export interface SyncState {
     status: SyncStatus;
+    format: DocumentFormat;
     local: LocalSnapshot | null;
     identity: DeviceIdentity | null;
     user: CurrentUser | null;
@@ -121,6 +123,7 @@ export interface SyncState {
     refreshedAt: string | null;
 }
 export interface ApplyRemoteDocumentRequest {
+    format: DocumentFormat;
     content: string;
     expectedContentHash: string | null;
     manifest: LocalManifest;

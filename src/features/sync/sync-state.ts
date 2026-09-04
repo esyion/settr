@@ -1,11 +1,17 @@
 import { api, ApiClientError, loadRuntimeSnapshot } from "@/lib/api-client";
-import type { Revision, SyncState, SyncStatus } from "@/lib/contracts";
+import type {
+  DocumentFormat,
+  Revision,
+  SyncState,
+  SyncStatus,
+} from "@/lib/contracts";
 import { clearSession, loadSession } from "@/lib/session-store";
 import { normalizeContentHash } from "@/features/sync/hash";
 
 export const APP_VERSION = "0.1.0";
 export const EMPTY_STATE: SyncState = {
   status: "loading",
+  format: "agentsMd",
   local: null,
   identity: null,
   user: null,
@@ -54,13 +60,14 @@ function isAuthenticationError(error: unknown) {
 }
 
 /** Loads the local snapshot and all authenticated remote synchronization state. */
-export async function loadWorkspace(): Promise<SyncState> {
-  const runtime = await loadRuntimeSnapshot(APP_VERSION);
+export async function loadWorkspace(format: DocumentFormat): Promise<SyncState> {
+  const runtime = await loadRuntimeSnapshot(APP_VERSION, format);
   const session = await loadSession();
   if (!session)
     return {
       ...EMPTY_STATE,
       status: "signedOut",
+      format,
       local: runtime.local,
       identity: runtime.identity,
       message: "请登录后连接云端",
@@ -74,12 +81,13 @@ export async function loadWorkspace(): Promise<SyncState> {
     return {
       ...EMPTY_STATE,
       status: "signedOut",
+      format,
       local: runtime.local,
       identity: runtime.identity,
       message: "登录会话已过期，请重新登录",
     };
   }
-  const document = await api.document();
+  const document = await api.document(format);
   const [devices, revisions] = await Promise.all([
     api.devices(),
     api.revisions(document.id, 1, 20),
@@ -99,6 +107,7 @@ export async function loadWorkspace(): Promise<SyncState> {
   const status = deriveStatus({ local: runtime.local, document, head });
   return {
     status,
+    format,
     local: runtime.local,
     identity: runtime.identity,
     user,

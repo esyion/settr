@@ -24,6 +24,7 @@ import {
   StartupState,
 } from "@/features/app/components/startup-state";
 import type { SyncStatus } from "@/lib/contracts";
+import { getDocumentFormatConfig } from "@/lib/document-formats";
 
 type Page = "overview" | "versions" | "devices" | "settings";
 function statusLabel(status: SyncStatus) {
@@ -114,7 +115,7 @@ export function ClientApp() {
             </div>
             <div>
               <p className="font-mono text-xs text-muted-foreground">
-                ~/AGENTS.md
+                {getDocumentFormatConfig(controller.state.format).displayPath}
               </p>
               <h1 className="text-xl font-semibold tracking-tight">
                 Agents Plus
@@ -186,6 +187,7 @@ export function ClientApp() {
                 busy={controller.busy}
                 mergeDraft={controller.mergeDraft}
                 setMergeDraft={controller.setMergeDraft}
+                onFormatChange={controller.selectFormat}
                 onRefresh={controller.refresh}
                 onUpload={controller.upload}
                 onApply={controller.apply}

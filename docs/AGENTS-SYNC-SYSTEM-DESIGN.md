@@ -1,6 +1,6 @@
 # Agents Plus 系统设计方案
 
-> 目标：让用户在多台电脑上共享同一份 `~/AGENTS.md`，并拥有安全、可追溯、可恢复的云端版本管理能力。
+> 目标：让用户在多台电脑上共享同一份 `AGENTS.md` 和 `~/.claude/CLAUDE.md`，并拥有安全、可追溯、可恢复的云端版本管理能力。
 >
 > 适用项目：Tauri 2 + Next.js + React + TypeScript + Tailwind CSS + shadcn/ui + Rust。
 
@@ -21,7 +21,7 @@
 
 ### 1.3 非目标（MVP 不做）
 
-- 不管理整个用户主目录，只同步 `~/AGENTS.md`。
+- 不管理整个用户主目录，只同步 `~/AGENTS.md` 和 `~/.claude/CLAUDE.md`。
 - 历史版本曾使用 `~/.agents/AGENTS.md`；客户端首次发现旧文件时会复制到 `~/AGENTS.md`，保留旧文件作为备份，不删除旧文件。
 - 不执行 AGENTS.md 中的命令，不解析或评价规则内容。
 - 不在 MVP 中做多人协作编辑器、评论、审批流和团队组织权限。
@@ -166,9 +166,9 @@
 
 默认主文件：
 
-- Windows、macOS、Linux：用户主目录下的 `~/AGENTS.md`
+- Windows、macOS、Linux：`~/AGENTS.md` 和 `~/.claude/CLAUDE.md`
 
-不要硬编码盘符或绝对路径。统一使用 Rust 的 home directory API 解析用户目录，再拼接 `AGENTS.md`。
+不要硬编码盘符或绝对路径。统一使用 Rust 的 home directory API 解析用户目录，再按格式拼接 `AGENTS.md` 或 `.claude/CLAUDE.md`。
 
 ### 4.2 本地管理目录
 
@@ -355,7 +355,8 @@
 
 ### 文档与同步
 
-- `GET /v1/documents/agents-md`：获取 head、ETag 和文档摘要。
+- `GET /v1/documents/agents-md`：获取 AGENTS.md 的 head、ETag 和文档摘要。
+- `GET /v1/documents/claude-md`：获取 CLAUDE.md 的 head、ETag 和文档摘要。
 - `GET /v1/documents/{documentId}/revisions`：分页获取版本列表。
 - `GET /v1/revisions/{revisionId}`：获取指定版本内容。
 - `POST /v1/documents/{documentId}/revisions`：基于 parentRevisionId 提交版本。

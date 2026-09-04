@@ -6,6 +6,7 @@ import type {
   Device,
   DeviceIdentity,
   Document,
+  DocumentFormat,
   LocalSnapshot,
   PasswordResetResponse,
   Revision,
@@ -14,6 +15,7 @@ import type {
   ApiPage,
 } from "@/lib/contracts";
 import { nativeApiRequest, invokeNative } from "@/lib/tauri";
+import { DOCUMENT_FORMAT_CONFIGS } from "@/lib/document-formats";
 import {
   clearSession,
   getMemorySession,
@@ -228,7 +230,10 @@ export const api = {
     request<void>("/api/v1/devices/" + encodeURIComponent(deviceId), {
       method: "DELETE",
     }),
-  document: () => request<Document>("/api/v1/documents/agents-md"),
+  document: (format: DocumentFormat) =>
+    request<Document>(
+      "/api/v1/documents/" + DOCUMENT_FORMAT_CONFIGS[format].apiSlug,
+    ),
   documentHead: (documentId: string) =>
     request<Document>(
       "/api/v1/documents/" + encodeURIComponent(documentId) + "/head",
@@ -284,26 +289,29 @@ export const api = {
 
 export async function loadRuntimeSnapshot(
   appVersion: string,
+  format: DocumentFormat,
 ): Promise<{ identity: DeviceIdentity; local: LocalSnapshot }> {
   const [identity, local] = await Promise.all([
     invokeNative<DeviceIdentity>("get_device_identity", { appVersion }),
-    invokeNative<LocalSnapshot>("get_local_snapshot"),
+    invokeNative<LocalSnapshot>("get_local_snapshot", { format }),
   ]);
   return { identity, local };
 }
 
 export async function saveLocalManifest(
+  format: DocumentFormat,
   manifest: LocalSnapshot["manifest"],
 ): Promise<LocalSnapshot["manifest"]> {
-  return invokeNative("save_local_manifest", { request: { manifest } });
+  return invokeNative("save_local_manifest", { request: { format, manifest } });
 }
 export async function applyRemoteDocument(
+  format: DocumentFormat,
   content: string,
   expectedContentHash: string | null,
   manifest: LocalSnapshot["manifest"],
 ): Promise<LocalSnapshot> {
   return invokeNative("apply_remote_document", {
-    request: { content, expectedContentHash, manifest },
+    request: { format, content, expectedContentHash, manifest },
   });
 }
 export function isAuthenticated(): boolean {

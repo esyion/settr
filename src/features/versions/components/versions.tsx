@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api-client";
 import type { Revision, SyncState } from "@/lib/contracts";
+import { getDocumentFormatConfig } from "@/lib/document-formats";
 
 const OPEN_SOURCE_UNIFIED_MODE = 4;
 const DiffView = dynamic(
@@ -96,10 +97,11 @@ export function Versions({
   const [restoreTarget, setRestoreTarget] = useState<Revision | null>(null);
   const [detailMode, setDetailMode] = useState<"content" | "diff">("content");
   const [diffState, setDiffState] = useState<DiffState | null>(null);
+  const formatConfig = getDocumentFormatConfig(state.format);
   const localContent = state.local?.content;
   const diffKey =
     detailMode === "diff" && selected && localContent !== null && localContent !== undefined
-      ? `${selected.id}:${state.local?.contentHash ?? localContent}`
+      ? `${formatConfig.label}:${selected.id}:${state.local?.contentHash ?? localContent}`
       : null;
 
   /** Builds and disposes the open-source unified diff when its inputs change. */
@@ -118,9 +120,9 @@ export function Versions({
       .then((module) => {
         if (!module || !active) return;
         generated = module.generateDiffFile(
-          "local/AGENTS.md",
+          `local/${formatConfig.label}`,
           localContent,
-          `revision/${selected.id}/AGENTS.md`,
+          `revision/${selected.id}/${formatConfig.label}`,
           selected.content,
           "markdown",
           "markdown",
@@ -144,7 +146,7 @@ export function Versions({
       active = false;
       generated?.clear();
     };
-  }, [diffKey, localContent, selected]);
+  }, [diffKey, formatConfig.label, localContent, selected]);
 
   /** Loads a revision's full content into the detail pane. */
   async function open(id: string) {
@@ -283,7 +285,7 @@ export function Versions({
                           </EmptyMedia>
                           <EmptyTitle>无法比较本地文件</EmptyTitle>
                           <EmptyDescription>
-                            本机尚未找到可用于比较的 ~/AGENTS.md。
+                            本机尚未找到可用于比较的 {formatConfig.displayPath}。
                           </EmptyDescription>
                         </EmptyHeader>
                       </Empty>
@@ -364,7 +366,7 @@ export function Versions({
             <AlertDialogMedia><AlertTriangle className="text-amber-500" /></AlertDialogMedia>
             <AlertDialogTitle>确认恢复此版本？</AlertDialogTitle>
             <AlertDialogDescription>
-              恢复会创建一个新的云端版本，并覆盖本地 ~/AGENTS.md。覆盖前会自动创建备份，此操作不可直接撤销。
+              恢复会创建一个新的云端版本，并覆盖本地 {formatConfig.displayPath}。覆盖前会自动创建备份，此操作不可直接撤销。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

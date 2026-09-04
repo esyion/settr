@@ -1,7 +1,12 @@
 "use client";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Revision, SyncState } from "@/lib/contracts";
+import type { DocumentFormat, Revision, SyncState } from "@/lib/contracts";
+import {
+  DOCUMENT_FORMAT_OPTIONS,
+  getDocumentFormatConfig,
+} from "@/lib/document-formats";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LocalFileCard } from "@/features/sync/components/local-file-card";
 import { OverviewSummary } from "@/features/sync/components/overview-summary";
 import { SyncActionCard } from "@/features/sync/components/sync-action-card";
@@ -10,6 +15,7 @@ export function Overview({
   busy,
   mergeDraft,
   setMergeDraft,
+  onFormatChange,
   onRefresh,
   onUpload,
   onApply,
@@ -20,6 +26,7 @@ export function Overview({
   busy: string | null;
   mergeDraft: string | null;
   setMergeDraft: (value: string | null) => void;
+  onFormatChange: (format: DocumentFormat) => Promise<void>;
   onRefresh: () => Promise<void>;
   onUpload: (message: string) => Promise<void>;
   onApply: (revision?: Revision | null) => Promise<void>;
@@ -35,9 +42,29 @@ export function Overview({
             控制你的规则文件
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            客户端只读写本机 ~/AGENTS.md，云端版本通过真实 API 管理。
+            客户端只读写本机 {getDocumentFormatConfig(state.format).displayPath}，云端版本通过真实 API 管理。
           </p>
         </div>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          spacing={0}
+          value={state.format}
+          onValueChange={(value) => {
+            const selected = DOCUMENT_FORMAT_OPTIONS.find(
+              (option) => option.value === value,
+            );
+            if (selected) void onFormatChange(selected.value);
+          }}
+          aria-label="规则格式"
+          disabled={Boolean(busy)}
+        >
+          {DOCUMENT_FORMAT_OPTIONS.map((option) => (
+            <ToggleGroupItem key={option.value} value={option.value}>
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
         <Button
           variant="outline"
           onClick={() => void onRefresh()}
@@ -62,7 +89,7 @@ export function Overview({
           onStartMerge={onStartMerge}
           onResolveMerge={onResolveMerge}
         />
-        <LocalFileCard local={state.local} />
+        <LocalFileCard format={state.format} local={state.local} />
       </div>
     </div>
   );

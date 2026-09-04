@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Revision, SyncState } from "@/lib/contracts";
+import { getDocumentFormatConfig } from "@/lib/document-formats";
 export function SyncActionCard({
   state,
   busy,
@@ -57,7 +58,11 @@ export function SyncActionCard({
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
-                onClick={() => void onUpload("首次绑定：上传本地 AGENTS.md")}
+                onClick={() =>
+                  void onUpload(
+                    `首次绑定：上传本地 ${getDocumentFormatConfig(state.format).label}`,
+                  )
+                }
                 disabled={isBusy}
               >
                 <Upload />

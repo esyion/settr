@@ -1,8 +1,9 @@
 use super::atomic_file::write_json_atomically;
 use super::local_paths::{
-    app_dir, device_path, ensure_app_dir, ensure_primary_document, legacy_device_path,
-    legacy_manifest_path, manifest_path,
+    app_dir, device_path, ensure_app_dir, ensure_document_parent, ensure_primary_document,
+    legacy_agents_manifest_path, legacy_device_path, manifest_path,
 };
+use crate::domain::document_format::DocumentFormat;
 use crate::hash::sha256_hex;
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -12,6 +13,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 const MANIFEST_SCHEMA_VERSION: u32 = 1;
+const MAX_DOCUMENT_BYTES: usize = 1_048_576;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -50,6 +52,7 @@ pub struct DeviceIdentity {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApplyDocumentRequest {
+    pub format: DocumentFormat,
     pub content: String,
     pub expected_content_hash: Option<String>,
     pub manifest: LocalManifest,
@@ -58,16 +61,17 @@ pub struct ApplyDocumentRequest {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveManifestRequest {
+    pub format: DocumentFormat,
     pub manifest: LocalManifest,
 }
 
-/// Reads the persisted synchronization manifest, including the legacy location when present.
-fn read_manifest() -> Result<LocalManifest, String> {
-    let path = manifest_path()?;
-    let source = if path.exists() {
-        path
+/// Reads the persisted synchronization manifest for one rule format.
+fn read_manifest(format: DocumentFormat) -> Result<LocalManifest, String> {
+    let path = manifest_path(format)?;
+    let source = if format == DocumentFormat::AgentsMd && !path.exists() {
+        legacy_agents_manifest_path()?
     } else {
-        legacy_manifest_path()?
+        path
     };
     if !source.exists() {
         return Ok(LocalManifest {
@@ -76,7 +80,7 @@ fn read_manifest() -> Result<LocalManifest, String> {
         });
     }
     let content =
-        fs::read_to_string(source).map_err(|error| format!("无法读取同步元数据: {error}"))?;
+        fs::read_to_string(&source).map_err(|error| format!("无法读取同步元数据: {error}"))?;
     let mut manifest: LocalManifest =
         serde_json::from_str(&content).map_err(|error| format!("同步元数据格式损坏: {error}"))?;
     if manifest.schema_version == 0 {
@@ -94,14 +98,14 @@ fn modified_at_ms(metadata: &fs::Metadata) -> Option<u64> {
         .map(|duration| duration.as_millis() as u64)
 }
 
-/// Reads the local document, metadata, content hash, and synchronization manifest.
-pub fn read_snapshot() -> Result<LocalFileSnapshot, String> {
-    let path = ensure_primary_document()?;
-    let manifest = read_manifest()?;
+/// Reads one local rule document, its metadata, content hash, and manifest.
+pub fn read_snapshot(format: DocumentFormat) -> Result<LocalFileSnapshot, String> {
+    let path = ensure_primary_document(format)?;
+    let manifest = read_manifest(format)?;
     if !path.exists() {
         return Ok(LocalFileSnapshot {
             exists: false,
-            display_path: "~/AGENTS.md".to_string(),
+            display_path: format.display_path(),
             bytes: 0,
             modified_at_ms: None,
             content: None,
@@ -109,13 +113,13 @@ pub fn read_snapshot() -> Result<LocalFileSnapshot, String> {
             manifest,
         });
     }
-    let metadata =
-        fs::metadata(&path).map_err(|error| format!("无法读取 AGENTS.md 文件信息: {error}"))?;
+    let metadata = fs::metadata(&path)
+        .map_err(|error| format!("无法读取 {} 文件信息: {error}", format.file_name()))?;
     let content = fs::read_to_string(&path)
-        .map_err(|error| format!("AGENTS.md 必须是有效的 UTF-8 文件: {error}"))?;
+        .map_err(|error| format!("{} 必须是有效的 UTF-8 文件: {error}", format.file_name()))?;
     Ok(LocalFileSnapshot {
         exists: true,
-        display_path: "~/AGENTS.md".to_string(),
+        display_path: format.display_path(),
         bytes: content.len() as u64,
         modified_at_ms: modified_at_ms(&metadata),
         content_hash: Some(sha256_hex(&content)),
@@ -135,7 +139,7 @@ pub fn get_device_identity(app_version: &str) -> Result<DeviceIdentity, String> 
     };
     if source.exists() {
         let content =
-            fs::read_to_string(source).map_err(|error| format!("无法读取设备标识: {error}"))?;
+            fs::read_to_string(&source).map_err(|error| format!("无法读取设备标识: {error}"))?;
         let mut identity: DeviceIdentity =
             serde_json::from_str(&content).map_err(|error| format!("设备标识格式损坏: {error}"))?;
         identity.app_version = app_version.to_string();
@@ -164,18 +168,22 @@ pub fn get_device_identity(app_version: &str) -> Result<DeviceIdentity, String> 
     Ok(identity)
 }
 
-/// Persists a synchronization manifest using an atomic JSON replacement.
-pub fn save_manifest(mut manifest: LocalManifest) -> Result<LocalManifest, String> {
+/// Persists one format's synchronization manifest using an atomic JSON replacement.
+pub fn save_manifest(
+    format: DocumentFormat,
+    mut manifest: LocalManifest,
+) -> Result<LocalManifest, String> {
     ensure_app_dir()?;
     manifest.schema_version = MANIFEST_SCHEMA_VERSION;
-    write_json_atomically(&manifest_path()?, &manifest)?;
+    write_json_atomically(&manifest_path(format)?, &manifest)?;
     Ok(manifest)
 }
 
-/// Safely applies remote content after validating the local expected hash and creating a backup.
+/// Safely applies remote content for one rule format after hash validation and backup.
 pub fn apply_document(request: ApplyDocumentRequest) -> Result<LocalFileSnapshot, String> {
-    let path = ensure_primary_document()?;
-    let current = read_snapshot()?;
+    let format = request.format;
+    let path = ensure_primary_document(format)?;
+    let current = read_snapshot(format)?;
     if let Some(expected) = request.expected_content_hash.as_deref() {
         if current.content_hash.as_deref() != Some(expected) {
             return Err(
@@ -183,13 +191,13 @@ pub fn apply_document(request: ApplyDocumentRequest) -> Result<LocalFileSnapshot
             );
         }
     }
-    if request.content.len() > 1_048_576 {
-        return Err("CONTENT_TOO_LARGE:AGENTS.md 超过服务端允许的大小".to_string());
+    if request.content.len() > MAX_DOCUMENT_BYTES {
+        return Err(format!(
+            "CONTENT_TOO_LARGE:{} 超过服务端允许的大小",
+            format.file_name()
+        ));
     }
-    let parent = path
-        .parent()
-        .ok_or_else(|| "AGENTS.md 路径无效".to_string())?;
-    fs::create_dir_all(parent).map_err(|error| format!("无法创建用户主目录: {error}"))?;
+    let parent = ensure_document_parent(format)?;
     let backup_dir = app_dir()?.join("backups");
     fs::create_dir_all(&backup_dir).map_err(|error| format!("无法创建本地备份目录: {error}"))?;
     if path.exists() {
@@ -197,22 +205,29 @@ pub fn apply_document(request: ApplyDocumentRequest) -> Result<LocalFileSnapshot
             .duration_since(UNIX_EPOCH)
             .map_err(|error| error.to_string())?
             .as_millis();
-        fs::copy(&path, backup_dir.join(format!("AGENTS-{timestamp}.md")))
-            .map_err(|error| format!("无法创建远程覆盖前备份: {error}"))?;
+        fs::copy(
+            &path,
+            backup_dir.join(format!("{}-{timestamp}.md", format.file_stem())),
+        )
+        .map_err(|error| format!("无法创建远程覆盖前备份: {error}"))?;
     }
-    let temp_path = parent.join(format!(".AGENTS.md.tmp-{}", Uuid::new_v4().simple()));
+    let temp_path = parent.join(format!(
+        ".{}.tmp-{}",
+        format.file_name(),
+        Uuid::new_v4().simple()
+    ));
     {
         let mut file = OpenOptions::new()
             .create_new(true)
             .write(true)
             .open(&temp_path)
-            .map_err(|error| format!("无法创建 AGENTS.md 临时文件: {error}"))?;
+            .map_err(|error| format!("无法创建 {} 临时文件: {error}", format.file_name()))?;
         file.write_all(request.content.as_bytes())
-            .map_err(|error| format!("无法写入 AGENTS.md 临时文件: {error}"))?;
+            .map_err(|error| format!("无法写入 {} 临时文件: {error}", format.file_name()))?;
         file.sync_all()
-            .map_err(|error| format!("无法持久化 AGENTS.md 临时文件: {error}"))?;
+            .map_err(|error| format!("无法持久化 {} 临时文件: {error}", format.file_name()))?;
     }
     super::atomic_file::replace_file(&temp_path, &path)?;
-    save_manifest(request.manifest)?;
-    read_snapshot()
+    save_manifest(format, request.manifest)?;
+    read_snapshot(format)
 }
