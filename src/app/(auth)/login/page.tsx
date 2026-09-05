@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthFormPanel } from "@/features/auth/components/auth-form-panel";
 import {
   AuthPageShell,
@@ -18,6 +18,10 @@ import { loadSession } from "@/lib/session-store";
  */
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
+  const safeReturnUrl = returnUrl && returnUrl.startsWith("/") ? returnUrl : null;
+
   const device = useDeviceIdentity();
 
   // 已登录用户访问 /login 时直接跳到概览页。
@@ -27,12 +31,12 @@ export default function LoginPage() {
     void (async () => {
       const session = await loadSession();
       if (cancelled) return;
-      if (session) router.replace("/overview");
+      if (session) router.replace(safeReturnUrl ?? "/overview");
     })();
     return () => {
       cancelled = true;
     };
-  }, [device.status, device.identity, router]);
+  }, [device.status, device.identity, router, safeReturnUrl]);
 
   if (device.status === "loading") {
     return <AuthPageShell eyebrow="欢迎回来" title="登录到你的同步空间" />;
@@ -53,7 +57,7 @@ export default function LoginPage() {
         mode="login"
         onSwitchMode={() => router.replace("/register")}
         onAuthenticated={async () => {
-          router.replace("/overview");
+          router.replace(safeReturnUrl ?? "/overview");
         }}
         onForgotPassword={() => router.replace("/forgot-password")}
       />

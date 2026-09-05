@@ -161,6 +161,8 @@ async function request<T>(
 export const api = {
   listOrganizations: () =>
     request<import("@/lib/contracts").Organization[]>("/api/v1/organizations"),
+  listMyOrganizations: () =>
+    request<import("@/lib/contracts").Organization[]>("/api/v1/organizations"),
   createOrganization: (name: string) =>
     request<import("@/lib/contracts").Organization>("/api/v1/organizations", {
       method: "POST",

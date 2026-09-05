@@ -22,6 +22,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { ContextSwitcher } from "@/features/context/components/context-switcher";
 import { getDocumentFormatConfig } from "@/lib/document-formats";
 import type { DeviceIdentity, DocumentFormat } from "@/lib/contracts";
 
@@ -63,6 +64,9 @@ export function AppSidebar({
             </p>
             <p className="text-sm font-semibold tracking-tight">Agents Plus</p>
           </div>
+        </div>
+              <div className="px-2 pb-2 group-data-[collapsible=icon]:hidden">
+          <ContextSwitcher />
         </div>
       </SidebarHeader>
       <SidebarContent>

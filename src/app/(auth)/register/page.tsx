@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthFormPanel } from "@/features/auth/components/auth-form-panel";
 import {
   AuthPageShell,
@@ -13,6 +13,10 @@ import { useDeviceIdentity } from "@/features/auth/use-device-identity";
  */
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
+  const safeReturnUrl = returnUrl && returnUrl.startsWith("/") ? returnUrl : null;
+
   const device = useDeviceIdentity();
 
   if (device.status === "loading") {
@@ -34,7 +38,7 @@ export default function RegisterPage() {
         mode="register"
         onSwitchMode={() => router.replace("/login")}
         onAuthenticated={async () => {
-          router.replace("/overview");
+          router.replace(safeReturnUrl ?? "/overview");
         }}
         onForgotPassword={() => router.replace("/forgot-password")}
       />
