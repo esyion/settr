@@ -1,8 +1,14 @@
-import { api, ApiClientError, loadRuntimeSnapshot } from "@/lib/api-client";
+import {
+  api,
+  ApiClientError,
+  loadRuntimeSnapshot,
+  saveLocalManifest,
+} from "@/lib/api-client";
 import type {
   DocumentFormat,
   Revision,
   SyncState,
+  LocalSnapshot,
   SyncStatus,
 } from "@/lib/contracts";
 import { clearSession, loadSession } from "@/lib/session-store";
@@ -56,7 +62,29 @@ export function deriveStatus(
 
 /** Returns whether an API failure means the saved authentication session is unusable. */
 function isAuthenticationError(error: unknown) {
-  return error instanceof ApiClientError && [40100, 40101, 40102, 40103].includes(error.code);
+  return error instanceof ApiClientError && [40100, 40101, 40102, 40103, 40302].includes(error.code);
+}
+
+/** Returns whether a locally saved revision no longer exists on the server. */
+function isRevisionNotFound(error: unknown) {
+  return error instanceof ApiClientError && error.code === 40402;
+}
+
+/** Removes sync pointers that refer to a revision missing from the current account. */
+async function clearStaleBaseManifest(
+  format: DocumentFormat,
+  local: LocalSnapshot,
+): Promise<LocalSnapshot> {
+  if (!local) return local;
+  const manifest = await saveLocalManifest(format, {
+    ...local.manifest,
+    schemaVersion: 1,
+    baseRevisionId: null,
+    baseContentHash: null,
+    lastAppliedRevisionId: null,
+    lastSyncedAt: null,
+  });
+  return { ...local, manifest };
 }
 
 /** Loads the local snapshot and all authenticated remote synchronization state. */
@@ -96,19 +124,23 @@ export async function loadWorkspace(format: DocumentFormat): Promise<SyncState> 
   let base: Revision | null = null;
   if (document.headRevisionId)
     head = await api.revision(document.id, document.headRevisionId);
+  let local = runtime.local;
   if (
-    runtime.local.manifest.baseRevisionId &&
-    runtime.local.manifest.baseRevisionId !== document.headRevisionId
-  )
-    base = await api.revision(
-      document.id,
-      runtime.local.manifest.baseRevisionId,
-    );
-  const status = deriveStatus({ local: runtime.local, document, head });
+    local.manifest.baseRevisionId &&
+    local.manifest.baseRevisionId !== document.headRevisionId
+  ) {
+    try {
+      base = await api.revision(document.id, local.manifest.baseRevisionId);
+    } catch (error) {
+      if (!isRevisionNotFound(error)) throw error;
+      local = await clearStaleBaseManifest(format, local);
+    }
+  }
+  const status = deriveStatus({ local, document, head });
   return {
     status,
     format,
-    local: runtime.local,
+    local,
     identity: runtime.identity,
     user,
     document,

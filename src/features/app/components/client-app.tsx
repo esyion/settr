@@ -17,7 +17,6 @@ import { Settings } from "@/features/settings/components/settings";
 import { Overview } from "@/features/sync/components/overview";
 import { useSyncController } from "@/features/sync/use-sync-controller";
 import { Versions } from "@/features/versions/components/versions";
-import { getApiBaseUrl } from "@/lib/api-client";
 import {
   DesktopRequiredState,
   LoadingState,
@@ -25,8 +24,9 @@ import {
 } from "@/features/app/components/startup-state";
 import type { SyncStatus } from "@/lib/contracts";
 import { getDocumentFormatConfig } from "@/lib/document-formats";
+import { OrganizationManagement } from "@/features/organization/components/organization-management";
 
-type Page = "overview" | "versions" | "devices" | "settings";
+type Page = "overview" | "versions" | "devices" | "organization" | "settings";
 function statusLabel(status: SyncStatus) {
   return {
     loading: "加载中",
@@ -103,6 +103,7 @@ export function ClientApp() {
     { id: "overview" as const, label: "概览", icon: Cloud },
     { id: "versions" as const, label: "版本历史", icon: FileClock },
     { id: "devices" as const, label: "设备", icon: Users },
+    { id: "organization" as const, label: "组织", icon: Users },
     { id: "settings" as const, label: "设置", icon: SettingsIcon },
   ];
   return (
@@ -211,12 +212,11 @@ export function ClientApp() {
                 onRevoke={controller.revoke}
               />
             )}
+            {page === "organization" && <OrganizationManagement />}
             {page === "settings" && (
               <Settings
-                apiUrl={getApiBaseUrl()}
                 identity={controller.state.identity}
                 busy={controller.busy}
-                onSaveApiUrl={controller.saveUrl}
                 onRename={controller.rename}
                 onLogout={controller.logout}
               />

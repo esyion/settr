@@ -4,9 +4,7 @@ import {
   api,
   ApiClientError,
   applyRemoteDocument,
-  getApiBaseUrl,
   saveLocalManifest,
-  setApiBaseUrl,
 } from "@/lib/api-client";
 import type {
   DocumentFormat,
@@ -47,47 +45,69 @@ function isOfflineError(error: unknown) {
 }
 /** Coordinates workspace loading, local changes, remote revisions, and user actions. */
 export function useSyncController() {
-  const { state, busy, notice, mergeDraft, setState, setBusy, setNotice, setMergeDraft } = useSyncStore();
+  const {
+    state,
+    busy,
+    notice,
+    mergeDraft,
+    setState,
+    setBusy,
+    setNotice,
+    setMergeDraft,
+  } = useSyncStore();
   /** Refreshes the complete local and remote state for the selected rule format. */
-  const refresh = useCallback(async (requestedFormat?: DocumentFormat) => {
-    const format = requestedFormat ?? useSyncStore.getState().state.format;
-    setBusy("refresh");
-    setState((previous) => ({ ...previous, status: "loading", message: null }));
-    try {
-      const next = await loadWorkspace(format);
-      setState(next);
-      setNotice(null);
-    } catch (error) {
+  const refresh = useCallback(
+    async (requestedFormat?: DocumentFormat) => {
+      const format = requestedFormat ?? useSyncStore.getState().state.format;
+      setBusy("refresh");
       setState((previous) => ({
         ...previous,
-        status: isOfflineError(error) ? "offline" : "error",
-        message: readableError(error),
+        status: "loading",
+        message: null,
       }));
-    } finally {
-      setBusy(null);
-    }
-  }, [setBusy, setNotice, setState]);
+      try {
+        const next = await loadWorkspace(format);
+        setState(next);
+        setNotice(null);
+      } catch (error) {
+        setState((previous) => ({
+          ...previous,
+          status: isOfflineError(error) ? "offline" : "error",
+          message: readableError(error),
+        }));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [setBusy, setNotice, setState],
+  );
   useEffect(() => {
     void refresh();
   }, [refresh]);
   /** Applies a newly observed local snapshot to the synchronization store. */
-  const onLocalSnapshot = useCallback((local: SyncState["local"]) => {
-    if (!local) return;
-    setState((previous) => ({
-      ...previous,
-      local,
-      status:
-        previous.document &&
-        previous.head &&
-        local.contentHash &&
-        normalizeContentHash(local.contentHash) ===
-          normalizeContentHash(previous.head.contentHash)
-          ? "synced"
-          : previous.status,
-    }));
-  }, [setState]);
+  const onLocalSnapshot = useCallback(
+    (local: SyncState["local"]) => {
+      if (!local) return;
+      setState((previous) => ({
+        ...previous,
+        local,
+        status:
+          previous.document &&
+          previous.head &&
+          local.contentHash &&
+          normalizeContentHash(local.contentHash) ===
+            normalizeContentHash(previous.head.contentHash)
+            ? "synced"
+            : previous.status,
+      }));
+    },
+    [setState],
+  );
   /** Displays errors produced by local maintenance tasks. */
-  const onMaintenanceError = useCallback((error: unknown) => setNotice(readableError(error)), [setNotice]);
+  const onMaintenanceError = useCallback(
+    (error: unknown) => setNotice(readableError(error)),
+    [setNotice],
+  );
   useDeviceMaintenance({
     format: state.format,
     identity: state.identity,
@@ -125,7 +145,9 @@ export function useSyncController() {
   async function upload(message: string) {
     await action("upload", async () => {
       if (!state.document || !state.local?.content || !state.local.contentHash)
-        throw new Error(`本地 ${getDocumentFormatConfig(state.format).label} 不存在或为空`);
+        throw new Error(
+          `本地 ${getDocumentFormatConfig(state.format).label} 不存在或为空`,
+        );
       const revision = await api.submitRevision(state.document.id, {
         parentRevisionId: state.head?.id || null,
         content: state.local.content,
@@ -161,7 +183,16 @@ export function useSyncController() {
       const target = revision || state.head;
       if (!target) throw new Error("云端还没有可应用的版本");
       const manifest: LocalManifest = {
-        ...(state.local?.manifest || { schemaVersion: 1, documentId: null, deviceId: null, baseRevisionId: null, baseContentHash: null, lastAppliedRevisionId: null, lastSyncedAt: null, localContentHash: null }),
+        ...(state.local?.manifest || {
+          schemaVersion: 1,
+          documentId: null,
+          deviceId: null,
+          baseRevisionId: null,
+          baseContentHash: null,
+          lastAppliedRevisionId: null,
+          lastSyncedAt: null,
+          localContentHash: null,
+        }),
         schemaVersion: 1,
         documentId: state.document?.id || null,
         deviceId: state.identity?.deviceId || null,
@@ -265,7 +296,16 @@ export function useSyncController() {
         "从历史版本恢复",
       );
       const manifest: LocalManifest = {
-        ...(state.local?.manifest || { schemaVersion: 1, documentId: null, deviceId: null, baseRevisionId: null, baseContentHash: null, lastAppliedRevisionId: null, lastSyncedAt: null, localContentHash: null }),
+        ...(state.local?.manifest || {
+          schemaVersion: 1,
+          documentId: null,
+          deviceId: null,
+          baseRevisionId: null,
+          baseContentHash: null,
+          lastAppliedRevisionId: null,
+          lastSyncedAt: null,
+          localContentHash: null,
+        }),
         schemaVersion: 1,
         documentId: state.document!.id,
         deviceId: state.identity?.deviceId || null,
@@ -301,15 +341,7 @@ export function useSyncController() {
       await refresh();
     });
   }
-  /** Validates and persists the configured backend URL. */
-  function saveUrl(value: string) {
-    try {
-      setApiBaseUrl(value);
-      setNotice("后端地址已更新：" + getApiBaseUrl());
-    } catch (error) {
-      setNotice(readableError(error));
-    }
-  }
+
   return {
     state,
     busy,
@@ -327,7 +359,6 @@ export function useSyncController() {
     restore,
     rename,
     revoke,
-    saveUrl,
     desktop: isTauriRuntime(),
   };
 }

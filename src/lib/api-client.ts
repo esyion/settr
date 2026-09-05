@@ -22,11 +22,10 @@ import {
   loadSession,
   saveSession,
 } from "@/lib/session-store";
-const DEFAULT_API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:19999";
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:19999"
+).replace(/\/$/, "");
 const REFRESH_PATH = "/api/v1/auth/refresh";
-const STORED_API_BASE_URL = typeof window !== "undefined" ? window.localStorage.getItem("agents-plus.api-base-url") : null;
-let baseUrl = STORED_API_BASE_URL || DEFAULT_API_BASE_URL;
 let refreshPromise: Promise<AuthSession | null> | null = null;
 export class ApiClientError extends Error {
   readonly code: number;
@@ -47,16 +46,6 @@ export class ApiClientError extends Error {
     this.details = details;
     this.requestId = requestId;
   }
-}
-export function getApiBaseUrl() {
-  return baseUrl;
-}
-export function setApiBaseUrl(value: string) {
-  const normalized = value.trim().replace(/\/$/, "");
-  if (!/^https?:\/\//i.test(normalized))
-    throw new Error("后端地址必须以 http:// 或 https:// 开头");
-  baseUrl = normalized;
-  if (typeof window !== "undefined") window.localStorage.setItem("agents-plus.api-base-url", normalized);
 }
 function parseEnvelope<T>(response: {
   status: number;
@@ -92,7 +81,7 @@ async function refreshAccessToken(): Promise<AuthSession | null> {
       if (!session?.refreshToken) return null;
       try {
         const result = await nativeApiRequest({
-          baseUrl,
+          baseUrl: API_BASE_URL,
           method: "POST",
           path: REFRESH_PATH,
           body: {
@@ -138,10 +127,16 @@ async function request<T>(
       ? await refreshAccessToken()
       : session;
   if (options.auth !== false && !activeSession) {
-    throw new ApiClientError("登录会话不存在或无法恢复，请重新登录", 40100, 401, null, null);
+    throw new ApiClientError(
+      "登录会话不存在或无法恢复，请重新登录",
+      40100,
+      401,
+      null,
+      null,
+    );
   }
   const response = await nativeApiRequest({
-    baseUrl,
+    baseUrl: API_BASE_URL,
     method: options.method || "GET",
     path,
     body: options.body,
@@ -164,6 +159,227 @@ async function request<T>(
 }
 
 export const api = {
+  listOrganizations: () =>
+    request<import("@/lib/contracts").Organization[]>("/api/v1/organizations"),
+  createOrganization: (name: string) =>
+    request<import("@/lib/contracts").Organization>("/api/v1/organizations", {
+      method: "POST",
+      body: { name },
+    }),
+  createTeam: (organizationId: string, name: string) =>
+    request<import("@/lib/contracts").Team>(
+      "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/teams",
+      { method: "POST", body: { name } },
+    ),
+  createProject: (organizationId: string, teamId: string, name: string) =>
+    request<import("@/lib/contracts").Project>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/teams/" +
+        encodeURIComponent(teamId) +
+        "/projects",
+      { method: "POST", body: { name } },
+    ),
+  enableOrganizationMember: (organizationId: string, memberId: string) =>
+    request<void>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/members/" +
+        encodeURIComponent(memberId) +
+        "/enable",
+      { method: "POST" },
+    ),
+  disableOrganizationMember: (organizationId: string, memberId: string) =>
+    request<void>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/members/" +
+        encodeURIComponent(memberId) +
+        "/disable",
+      { method: "POST" },
+    ),
+  removeOrganizationMember: (organizationId: string, memberId: string) =>
+    request<void>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/members/" +
+        encodeURIComponent(memberId),
+      { method: "DELETE" },
+    ),
+  enableTeamMember: (teamId: string, memberId: string) =>
+    request<void>(
+      "/api/v1/teams/" +
+        encodeURIComponent(teamId) +
+        "/members/" +
+        encodeURIComponent(memberId) +
+        "/enable",
+      { method: "POST" },
+    ),
+  disableTeamMember: (teamId: string, memberId: string) =>
+    request<void>(
+      "/api/v1/teams/" +
+        encodeURIComponent(teamId) +
+        "/members/" +
+        encodeURIComponent(memberId) +
+        "/disable",
+      { method: "POST" },
+    ),
+  addOrganizationMember: (organizationId: string, userId: string) =>
+    request<import("@/lib/contracts").OrganizationMember>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/members",
+      { method: "POST", body: { userId } },
+    ),
+  listTeams: (organizationId: string) =>
+    request<import("@/lib/contracts").Team[]>(
+      "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/teams",
+    ),
+  listTeamMembers: (teamId: string) =>
+    request<import("@/lib/contracts").TeamMember[]>(
+      "/api/v1/teams/" + encodeURIComponent(teamId) + "/members",
+    ),
+  addTeamMember: (teamId: string, organizationMemberId: string) =>
+    request<import("@/lib/contracts").TeamMember>(
+      "/api/v1/teams/" + encodeURIComponent(teamId) + "/members",
+      { method: "POST", body: { organizationMemberId } },
+    ),
+  removeTeamMember: (teamId: string, memberId: string) =>
+    request<void>(
+      "/api/v1/teams/" +
+        encodeURIComponent(teamId) +
+        "/members/" +
+        encodeURIComponent(memberId),
+      { method: "DELETE" },
+    ),
+  listProjects: (organizationId: string, teamId: string) =>
+    request<import("@/lib/contracts").Project[]>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/teams/" +
+        encodeURIComponent(teamId) +
+        "/projects",
+    ),
+  listOrganizationMembers: (organizationId: string) =>
+    request<import("@/lib/contracts").OrganizationMember[]>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/members",
+    ),
+  getEffectivePolicies: (
+    organizationId: string,
+    teamId: string,
+    projectId: string,
+  ) =>
+    request<import("@/lib/contracts").EffectivePolicies>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/policies/effective?teamId=" +
+        encodeURIComponent(teamId) +
+        "&projectId=" +
+        encodeURIComponent(projectId),
+    ),
+  listRoles: (organizationId: string) =>
+    request<{ id: string; code: string; name: string; scope: string }[]>(
+      "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/roles",
+    ),
+  listRoleAssignments: (organizationId: string) =>
+    request<import("@/lib/contracts").RoleAssignment[]>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/roles/assignments",
+    ),
+  revokeRole: (organizationId: string, assignmentId: string) =>
+    request<void>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/roles/" +
+        encodeURIComponent(assignmentId),
+      { method: "DELETE" },
+    ),
+  withdrawPolicyDistribution: (
+    organizationId: string,
+    distributionId: string,
+  ) =>
+    request<import("@/lib/contracts").PolicyDistribution>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/policies/distributions/" +
+        encodeURIComponent(distributionId),
+      { method: "DELETE" },
+    ),
+  listPolicyDistributions: (organizationId: string) =>
+    request<import("@/lib/contracts").PolicyDistribution[]>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/policies/distributions",
+    ),
+  assignRole: (
+    organizationId: string,
+    input: {
+      organizationMemberId: string;
+      roleId: string;
+      teamId?: string;
+      projectId?: string;
+    },
+  ) =>
+    request<import("@/lib/contracts").RoleResponse>(
+      "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/roles",
+      { method: "POST", body: input },
+    ),
+  submitPolicyChange: (
+    organizationId: string,
+    input: { policyType: "AGENT" | "CLAUDE"; content: string; message: string },
+  ) =>
+    request<import("@/lib/contracts").PolicyChange>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/policies/changes",
+      { method: "POST", body: input },
+    ),
+  listPendingPolicyChanges: (organizationId: string) =>
+    request<import("@/lib/contracts").PendingPolicyRequest[]>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/policies/changes/pending",
+    ),
+  distributePolicy: (
+    organizationId: string,
+    input: {
+      versionId: string;
+      scopeType: string;
+      teamId?: string;
+      projectId?: string;
+      memberId?: string;
+    },
+  ) =>
+    request<import("@/lib/contracts").PolicyDistribution>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/policies/distributions",
+      { method: "POST", body: input },
+    ),
+  reviewPolicyChange: (
+    organizationId: string,
+    requestId: string,
+    decision: "APPROVED" | "REJECTED",
+    comment?: string,
+  ) =>
+    request<import("@/lib/contracts").PolicyChange>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/policies/changes/" +
+        encodeURIComponent(requestId) +
+        "/review",
+      { method: "POST", body: { decision, comment } },
+    ),
+  listPolicyHistory: (organizationId: string, policyType: "AGENT" | "CLAUDE") =>
+    request<import("@/lib/contracts").PolicyVersion[]>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/policies/history?policyType=" +
+        policyType,
+    ),
   register: (email: string, password: string) =>
     request<CurrentUser>("/api/v1/auth/register", {
       method: "POST",

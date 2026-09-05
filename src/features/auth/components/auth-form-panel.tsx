@@ -4,12 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Cloud, KeyRound, RefreshCw, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  api,
-  ApiClientError,
-  getApiBaseUrl,
-  setApiBaseUrl,
-} from "@/lib/api-client";
+import { api, ApiClientError } from "@/lib/api-client";
 import type { DeviceIdentity } from "@/lib/contracts";
 
 /**
@@ -52,7 +47,6 @@ function validateRegisterPolicy(
  * 登录 / 注册表单面板。
  * <p>
  * 由 {@link AuthScreen} 挂载,本组件只关心表单状态与提交;忘记密码与重置密码逻辑在其它面板中处理。
- * 后端地址输入框仅在生产构建中可见,用于运维排错。
  */
 export function AuthFormPanel({
   identity,
@@ -70,7 +64,6 @@ export function AuthFormPanel({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [apiUrl, setApiUrl] = useState(getApiBaseUrl());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -93,8 +86,9 @@ export function AuthFormPanel({
     }
     setBusy(true);
     try {
-      setApiBaseUrl(apiUrl);
-      if (mode === "register") await api.register(email.trim(), password);
+      if (mode === "register") {
+        await api.register(email.trim(), password);
+      }
       await api.login({ email: email.trim(), password, identity });
       await onAuthenticated();
     } catch (error) {
@@ -136,7 +130,9 @@ export function AuthFormPanel({
             type="password"
             required
             minLength={mode === "register" ? 12 : 1}
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            autoComplete={
+              mode === "login" ? "current-password" : "new-password"
+            }
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder={
@@ -157,16 +153,6 @@ export function AuthFormPanel({
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
               placeholder="再次输入密码"
-            />
-          </label>
-        )}
-        {process.env.NODE_ENV == "production" && (
-          <label className="flex flex-col gap-2 text-sm font-medium">
-            后端地址
-            <Input
-              value={apiUrl}
-              onChange={(event) => setApiUrl(event.target.value)}
-              spellCheck={false}
             />
           </label>
         )}
