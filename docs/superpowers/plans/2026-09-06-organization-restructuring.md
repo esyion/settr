@@ -89,7 +89,7 @@
 
 ## P1: Context Foundation
 
-### Task 1.1: zustand store 状态定义
+### Task 1.1: zustand store 状态定义 [x]
 
 **Files:**
 - Create: `src/features/context/store.ts`
@@ -191,7 +191,7 @@ git commit -m "feat(context): add zustand store for workspace context"
 
 ---
 
-### Task 1.2: useWorkspaceContext hook
+### Task 1.2: useWorkspaceContext hook [x]
 
 **Files:**
 - Create: `src/features/context/hooks/use-workspace-context.ts`
@@ -298,7 +298,7 @@ git commit -m "feat(context): add useWorkspaceContext hook"
 
 ---
 
-### Task 1.3: ContextSwitcher 组件
+### Task 1.3: ContextSwitcher 组件 [x] [x]
 
 **Files:**
 - Create: `src/features/context/components/context-switcher.tsx`
@@ -421,7 +421,7 @@ git commit -m "feat(context): add context switcher dropdown component"
 
 ---
 
-### Task 1.4: 改造 (app)/layout.tsx 加载 context
+### Task 1.4: 改造 (app)/layout.tsx 加载 context [x]
 
 **Files:**
 - Modify: `src/app/(app)/layout.tsx`
@@ -462,7 +462,7 @@ git commit -m "feat(context): wire context switcher into app sidebar"
 
 ---
 
-### Task 1.5: organization 路由组 layout 加 redirect 守卫
+### Task 1.5: organization 路由组 layout 加 redirect 守卫 [x]
 
 **Files:**
 - Create: `src/app/(app)/organization/layout.tsx`
@@ -528,7 +528,7 @@ git commit -m "feat(context): add organization layout redirect guard"
 
 ---
 
-### Task 1.6: 公开路由骨架
+### Task 1.6: 公开路由骨架 [x] [x]
 
 **Files:**
 - Create: `src/app/(public)/layout.tsx`
@@ -600,7 +600,7 @@ git commit -m "feat(context): add public route group with accept-invite skeleton
 
 ---
 
-### Task 1.7: 登录/注册支持 returnUrl
+### Task 1.7: [x] 登录/注册支持 returnUrl [x]
 
 **Files:**
 - Modify: `src/app/(auth)/login/page.tsx`
