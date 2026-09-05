@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Edit, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,10 +15,12 @@ import type { TeamsDataApi } from "@/features/teams/types";
 
 /**
  * 项目卡片：展示当前团队下的项目列表，
- * 项目可点击切换；提供创建项目表单。
+ * 项目可点击切换；提供创建项目表单与重命名/删除按钮。
  */
 export function ProjectCard({ data }: { data: TeamsDataApi }) {
   const [name, setName] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   if (!data.teamId) return null;
 
@@ -32,21 +34,73 @@ export function ProjectCard({ data }: { data: TeamsDataApi }) {
         {data.projects.length === 0 ? (
           <p className="text-sm text-muted-foreground">该团队下还没有项目</p>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {data.projects.map((project) => (
-              <li key={project.id}>
-                <button
-                  type="button"
-                  className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-muted ${
-                    project.id === data.projectId ? "bg-muted font-medium" : ""
-                  }`}
-                  onClick={() => data.setProjectId(project.id)}
-                >
-                  <span>{project.name}</span>
-                  <code className="font-mono text-xs text-muted-foreground">
-                    {project.id}
-                  </code>
-                </button>
+              <li
+                key={project.id}
+                className="flex items-center justify-between rounded-md border p-3 text-sm"
+              >
+                {renamingId === project.id ? (
+                  <form
+                    className="flex flex-1 items-center gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void data.renameProject(project.id, renameValue);
+                      setRenamingId(null);
+                    }}
+                  >
+                    <Input
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      className="h-8"
+                      autoFocus
+                    />
+                    <Button size="sm" type="submit">
+                      保存
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      type="button"
+                      onClick={() => setRenamingId(null)}
+                    >
+                      取消
+                    </Button>
+                  </form>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={`flex-1 text-left ${
+                        project.id === data.projectId ? "font-medium" : ""
+                      }`}
+                      onClick={() => data.setProjectId(project.id)}
+                    >
+                      {project.name}
+                    </button>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={data.busy !== null}
+                        onClick={() => {
+                          setRenamingId(project.id);
+                          setRenameValue(project.name);
+                        }}
+                      >
+                        <Edit />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={data.busy !== null}
+                        onClick={() => void data.deleteProject(project.id)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  </>
+                )}
               </li>
             ))}
           </ul>

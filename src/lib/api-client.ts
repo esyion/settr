@@ -296,6 +296,58 @@ export const api = {
       "/api/v1/role-assignments/" + encodeURIComponent(assignmentId),
       { method: "DELETE" },
     ),
+
+  deleteOrganization: (organizationId: string) =>
+    request<void>(
+      "/api/v1/organizations/" + encodeURIComponent(organizationId),
+      { method: "DELETE" },
+    ),
+  renameOrganization: (organizationId: string, name: string) =>
+    request<import("@/lib/contracts").Organization>(
+      "/api/v1/organizations/" + encodeURIComponent(organizationId),
+      { method: "PATCH", body: { name } },
+    ),
+  deleteTeam: (organizationId: string, teamId: string) =>
+    request<void>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/teams/" +
+        encodeURIComponent(teamId),
+      { method: "DELETE" },
+    ),
+  renameTeam: (organizationId: string, teamId: string, name: string) =>
+    request<import("@/lib/contracts").Team>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/teams/" +
+        encodeURIComponent(teamId),
+      { method: "PATCH", body: { name } },
+    ),
+  deleteProject: (organizationId: string, teamId: string, projectId: string) =>
+    request<void>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/teams/" +
+        encodeURIComponent(teamId) +
+        "/projects/" +
+        encodeURIComponent(projectId),
+      { method: "DELETE" },
+    ),
+  renameProject: (
+    organizationId: string,
+    teamId: string,
+    projectId: string,
+    name: string,
+  ) =>
+    request<import("@/lib/contracts").Project>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/teams/" +
+        encodeURIComponent(teamId) +
+        "/projects/" +
+        encodeURIComponent(projectId),
+      { method: "PATCH", body: { name } },
+    ),
   withdrawPolicyDistribution: (
     organizationId: string,
     distributionId: string,

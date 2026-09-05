@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ApiClientError } from "@/lib/api-client";
+import { ApiClientError, api } from "@/lib/api-client";
 import { useWorkspaceStore } from "@/features/context/store";
 import { useWorkspaceContextValue } from "@/features/context/workspace-context";
 import { toast } from "sonner";
@@ -9,9 +9,6 @@ import { teamsApi } from "@/features/teams/api";
 import type { Project, Team } from "@/lib/contracts";
 import type { TeamsDataApi } from "@/features/teams/types";
 
-/**
- * 把任意错误归一化为可向用户展示的中文提示。
- */
 function readableError(error: unknown, fallback: string): string {
   if (error instanceof ApiClientError) return error.message;
   if (error instanceof Error) return error.message;
@@ -32,7 +29,6 @@ export function useTeamsData(): TeamsDataApi {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  // 加载 teams 当 organizationId 变化时
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!organizationId) {
@@ -56,7 +52,6 @@ export function useTeamsData(): TeamsDataApi {
     };
   }, [organizationId]);
 
-  // 加载 projects 当 teamId 变化时
   useEffect(() => {
     if (!organizationId || !teamId) {
       setProjects([]);
@@ -132,6 +127,122 @@ export function useTeamsData(): TeamsDataApi {
     [organizationId, teamId],
   );
 
+  const deleteOrganization = useCallback(async () => {
+    if (!organizationId) return;
+    if (!window.confirm("确认删除当前组织？此操作不可撤销")) return;
+    setBusy("删除组织");
+    try {
+      await api.deleteOrganization(organizationId);
+      toast.success("组织已删除");
+      useWorkspaceStore.getState().clearOrganization();
+    } catch (caught) {
+      toast.error(readableError(caught, "删除组织失败"));
+    } finally {
+      setBusy(null);
+    }
+  }, [organizationId]);
+
+  const renameOrganization = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed || !organizationId) return;
+      setBusy("重命名组织");
+      try {
+        const org = await api.renameOrganization(organizationId, trimmed);
+        useWorkspaceStore.getState().setOrganization(org.id);
+        toast.success(`已重命名为 ${org.name}`);
+      } catch (caught) {
+        toast.error(readableError(caught, "重命名组织失败"));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [organizationId],
+  );
+
+  const deleteTeam = useCallback(
+    async (targetTeamId: string) => {
+      if (!organizationId) return;
+      if (!window.confirm("确认删除该团队？")) return;
+      setBusy("删除团队");
+      try {
+        await api.deleteTeam(organizationId, targetTeamId);
+        setTeams((cur) => cur.filter((t) => t.id !== targetTeamId));
+        if (teamId === targetTeamId) setTeamId("");
+        toast.success("团队已删除");
+      } catch (caught) {
+        toast.error(readableError(caught, "删除团队失败"));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [organizationId, teamId],
+  );
+
+  const renameTeam = useCallback(
+    async (targetTeamId: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed || !organizationId) return;
+      setBusy("重命名团队");
+      try {
+        const team = await api.renameTeam(organizationId, targetTeamId, trimmed);
+        setTeams((cur) =>
+          cur.map((t) => (t.id === team.id ? team : t)),
+        );
+        toast.success("团队已重命名");
+      } catch (caught) {
+        toast.error(readableError(caught, "重命名团队失败"));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [organizationId],
+  );
+
+  const deleteProject = useCallback(
+    async (targetProjectId: string) => {
+      if (!organizationId || !teamId) return;
+      if (!window.confirm("确认删除该项目？")) return;
+      setBusy("删除项目");
+      try {
+        await api.deleteProject(organizationId, teamId, targetProjectId);
+        setProjects((cur) => cur.filter((p) => p.id !== targetProjectId));
+        if (projectId === targetProjectId) setProjectId("");
+        toast.success("项目已删除");
+      } catch (caught) {
+        toast.error(readableError(caught, "删除项目失败"));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [organizationId, teamId, projectId],
+  );
+
+  const renameProject = useCallback(
+    async (targetProjectId: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed || !organizationId || !teamId) return;
+      setBusy("重命名项目");
+      try {
+        const project = await api.renameProject(
+          organizationId,
+          teamId,
+          targetProjectId,
+          trimmed,
+        );
+        setProjects((cur) =>
+          cur.map((p) => (p.id === project.id ? project : p)),
+        );
+        toast.success("项目已重命名");
+      } catch (caught) {
+        toast.error(readableError(caught, "重命名项目失败"));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [organizationId, teamId],
+  );
+
   return {
     organizations: ctx.organizations,
     teams,
@@ -146,5 +257,11 @@ export function useTeamsData(): TeamsDataApi {
     refresh,
     createTeam,
     createProject,
+    deleteOrganization,
+    renameOrganization,
+    deleteTeam,
+    renameTeam,
+    deleteProject,
+    renameProject,
   };
 }

@@ -23,4 +23,10 @@ export interface TeamsDataApi {
   refresh: () => Promise<void>;
   createTeam: (name: string) => Promise<void>;
   createProject: (name: string) => Promise<void>;
+  deleteOrganization: () => Promise<void>;
+  renameOrganization: (name: string) => Promise<void>;
+  deleteTeam: (teamId: string) => Promise<void>;
+  renameTeam: (teamId: string, name: string) => Promise<void>;
+  deleteProject: (projectId: string) => Promise<void>;
+  renameProject: (projectId: string, name: string) => Promise<void>;
 }
