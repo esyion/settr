@@ -127,7 +127,7 @@ export async function loadWorkspace(format: DocumentFormat): Promise<SyncState> 
   const failures: string[] = [];
   let devices: Awaited<ReturnType<typeof api.devices>> | null = null;
   let revisions: Awaited<ReturnType<typeof api.revisions>> | null = null;
-  let head: Revision | null = await api.revision(document.id, document.headRevisionId);
+  const head: Revision | null = await api.revision(document.id, document.headRevisionId);
   let base: Revision | null = null;
   let local = runtime.local;
   const baseRevisionId = local.manifest.baseRevisionId;

@@ -28,7 +28,7 @@ export interface DeviceIdentity {
     appVersion: string;
 }
 export interface Device {
-    id: string;
+    deviceId: string;
     deviceName: string;
     platform: Platform;
     appVersion: string;

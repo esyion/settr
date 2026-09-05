@@ -53,9 +53,9 @@ export function Devices({
       <div className="grid gap-4">
         {(devices ?? []).map((device, index) => (
           <DeviceCard
-            key={(device.id || "") + ":" + index}
+            key={(device.deviceId || "") + ":" + index}
             device={device}
-            current={device.id === currentDeviceId}
+            current={device.deviceId === currentDeviceId}
             busy={busy}
             onRename={onRename}
             onRevoke={onRevoke}
@@ -103,10 +103,10 @@ function DeviceCard({
             />
             <Button
               onClick={async () => {
-                await onRename(device.id, name);
+                await onRename(device.deviceId, name);
                 setEditing(false);
               }}
-              disabled={busy === "rename:" + device.id}
+              disabled={busy === "rename:" + device.deviceId}
             >
               <Save />
               保存
@@ -135,9 +135,9 @@ function DeviceCard({
                       "确定撤销设备“" + device.deviceName + "”吗？",
                     )
                   )
-                    void onRevoke(device.id);
+                    void onRevoke(device.deviceId);
                 }}
-                disabled={busy === "revoke:" + device.id}
+                disabled={busy === "revoke:" + device.deviceId}
               >
                 <XCircle />
                 撤销设备
