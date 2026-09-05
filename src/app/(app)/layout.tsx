@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, RefreshCw } from "lucide-react";
 import {
@@ -64,6 +64,14 @@ function AppLayoutShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const controller = useSyncController();
   const pathname = usePathname();
+  // 服务端没有 `window`，`isTauriRuntime()` 在 SSR 与首次 hydration 时取值不同，
+  // 会让不同分支渲染出不同 DOM（卡片 vs spinner）。先把 SSR 与 hydration 锁在
+  // 同一个 loading 占位上，挂载后再按真实环境分支。
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 鉴权拦截：未登录且已读取到设备身份时跳到登录页。
   useEffect(() => {
@@ -82,6 +90,10 @@ function AppLayoutShell({ children }: { children: React.ReactNode }) {
     pathname,
     router,
   ]);
+
+  if (!mounted) {
+    return <LoadingNotice />;
+  }
 
   if (!controller.desktop) {
     return <DesktopRequiredNotice />;

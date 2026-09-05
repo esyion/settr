@@ -647,7 +647,7 @@ git commit -m "feat(auth): support returnUrl on login and register"
 
 ## P2: Split + DTO Rename
 
-### Task 2.1: 重命名 contracts.ts 中的 DTO
+### Task 2.1: 重命名 contracts.ts 中的 DTO [x]
 
 **Files:**
 - Modify: `src/lib/contracts.ts`
@@ -714,7 +714,7 @@ git commit -m "refactor(contracts): rename DTOs (OrganizationMember→Membership
 
 ---
 
-### Task 2.2: 后端 DTO + entity + mapper 重命名
+### Task 2.2: 后端 DTO + entity + mapper 重命名 [x]
 
 **Files:**
 - Modify: `D:/workspace/agents-plus-server/src/main/java/com/krmeow/agentsplus/dto/**`
@@ -784,7 +784,7 @@ cd D:/workspace/agents-plus-server && git add . && git commit -m "refactor(dto):
 
 ---
 
-### Task 2.3: 后端 controller 路径调整
+### Task 2.3: 后端 controller 路径调整 [x]
 
 **Files:**
 - Modify: `D:/workspace/agents-plus-server/src/main/java/com/krmeow/agentsplus/controller/RoleController.java`
