@@ -1641,7 +1641,7 @@ git commit -m "refactor: remove legacy organization page (replaced by sub-pages)
 
 ## P3: Operations + UX + sonner
 
-### Task 3.1: 后端 Organization DELETE/PATCH controller
+### Task 3.1: 后端 Organization DELETE/PATCH controller [x]
 
 **Files:**
 - Modify: `D:/workspace/agents-plus-server/src/main/java/com/krmeow/agentsplus/controller/OrganizationController.java`
@@ -1722,7 +1722,7 @@ cd D:/workspace/agents-plus-server && git add . && git commit -m "feat(api): add
 
 ---
 
-### Task 3.2: 后端 Team DELETE/PATCH controller
+### Task 3.2: 后端 Team DELETE/PATCH controller [x]
 
 **Files:**
 - Modify: `TeamController.java`, `TeamService.java`
@@ -1739,7 +1739,7 @@ cd D:/workspace/agents-plus-server && git add . && git commit -m "feat(api): add
 
 ---
 
-### Task 3.3: 后端 Project DELETE/PATCH controller
+### Task 3.3: 后端 Project DELETE/PATCH controller [x]
 
 **Files:**
 - Modify: `ProjectController.java`, `ProjectService.java`
@@ -1756,7 +1756,7 @@ cd D:/workspace/agents-plus-server && git add . && git commit -m "feat(api): add
 
 ---
 
-### Task 3.4: 前端 teams feature 挂删除/重命名按钮
+### Task 3.4: 前端 teams feature 挂删除/重命名按钮 [x]
 
 **Files:**
 - Modify: `src/features/teams/components/team-card.tsx`
@@ -1822,7 +1822,7 @@ git commit -m "feat(teams): add delete and rename actions"
 
 ---
 
-### Task 3.5: 4 个 feature 改用 sonner 反馈
+### Task 3.5: 4 个 feature 改用 sonner 反馈 [x]
 
 **Files:**
 - Modify: `src/features/teams/hooks/use-teams-data.ts`(已在 T2.5 中部分实现,补齐)
@@ -1878,7 +1878,7 @@ git commit -m "refactor: replace top alerts with sonner toast for operations"
 
 ---
 
-### Task 3.6: 修复空状态文案 bug
+### Task 3.6: 修复空状态文案 bug [x]
 
 **Files:**
 - Modify: `src/features/teams/components/project-card.tsx`
@@ -1907,7 +1907,7 @@ git commit -m "fix(teams): correct empty state copy"
 
 ---
 
-### Task 3.7: 修复成员加入时间显示 bug
+### Task 3.7: 修复成员加入时间显示 bug [x]
 
 **Files:**
 - Modify: `src/lib/contracts.ts`(`TeamMembership` 加 `joinedAt` 字段)
@@ -1975,7 +1975,7 @@ cd D:/workspace/agents-plus && git commit -m "fix(memberships): show joinedAt in
 
 ---
 
-### Task 3.8: 项目列表改为可点击切换
+### Task 3.8: 项目列表改为可点击切换 [x]
 
 **Files:**
 - Modify: `src/features/teams/components/project-card.tsx`
@@ -2017,7 +2017,7 @@ git commit -m "feat(teams): make project list clickable to switch"
 
 ---
 
-### Task 3.9: 政策版本历史自动刷新
+### Task 3.9: 政策版本历史自动刷新 [x]
 
 **Files:**
 - Modify: `src/features/policies/hooks/use-policies-data.ts`
@@ -2058,7 +2058,7 @@ git commit -m "feat(policies): auto-load policy history on mount"
 
 ---
 
-### Task 3.10: policies 挂 distribute/withdraw UI
+### Task 3.10: policies 挂 distribute/withdraw UI [x]
 
 **Files:**
 - Modify: `src/features/policies/components/distribute-panel.tsx`(T2.7 已创建骨架)
