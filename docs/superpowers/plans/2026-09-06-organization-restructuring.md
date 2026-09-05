@@ -2396,7 +2396,7 @@ git commit -m "test(roles): add useRolesData hook test"
 
 ## P5: Invitation Flow
 
-### Task 5.1: 后端 Invitation entity + mapper + repository
+### Task 5.1: 后端 Invitation entity + mapper + repository [x]
 
 **Files:**
 - Create: `D:/workspace/agents-plus-server/src/main/java/com/krmeow/agentsplus/entity/Invitation.java`
@@ -2498,7 +2498,7 @@ cd D:/workspace/agents-plus-server && git add . && git commit -m "feat(api): add
 
 ---
 
-### Task 5.2: 后端 InvitationService
+### Task 5.2: 后端 InvitationService [x]
 
 **Files:**
 - Create: `D:/workspace/agents-plus-server/src/main/java/com/krmeow/agentsplus/service/InvitationService.java`
@@ -2592,7 +2592,7 @@ cd D:/workspace/agents-plus-server && git add . && git commit -m "feat(api): add
 
 ---
 
-### Task 5.3: 后端 InvitationController
+### Task 5.3: 后端 InvitationController [x]
 
 **Files:**
 - Create: `D:/workspace/agents-plus-server/src/main/java/com/krmeow/agentsplus/controller/InvitationController.java`
@@ -2651,7 +2651,7 @@ cd D:/workspace/agents-plus-server && git add . && git commit -m "feat(api): add
 
 ---
 
-### Task 5.4: 前端 api.ts 加 invitation 方法
+### Task 5.4: 前端 api.ts 加 invitation 方法 [x]
 
 **Files:**
 - Modify: `src/features/memberships/api.ts`
@@ -2698,7 +2698,7 @@ git commit -m "feat(memberships): add invitation api methods"
 
 ---
 
-### Task 5.5: InviteModal 组件
+### Task 5.5: InviteModal 组件 [x]
 
 **Files:**
 - Create: `src/features/memberships/components/invite-modal.tsx`
@@ -2842,7 +2842,7 @@ git commit -m "feat(memberships): add InviteModal component"
 
 ---
 
-### Task 5.6: PendingInvitations 列表组件
+### Task 5.6: PendingInvitations 列表组件 [x]
 
 **Files:**
 - Create: `src/features/memberships/components/pending-invitations.tsx`
@@ -2956,7 +2956,7 @@ git commit -m "feat(memberships): add PendingInvitations list component"
 
 ---
 
-### Task 5.7: accept-invite 页面完整实现
+### Task 5.7: accept-invite 页面完整实现 [x]
 
 **Files:**
 - Modify: `src/app/(public)/accept-invite/page.tsx`
@@ -3054,7 +3054,7 @@ git commit -m "feat(auth): full accept-invite page implementation"
 
 ---
 
-### Task 5.8: memberships page 接入邀请流程
+### Task 5.8: memberships page 接入邀请流程 [x]
 
 **Files:**
 - Modify: `src/app/(app)/organization/memberships/page.tsx`
