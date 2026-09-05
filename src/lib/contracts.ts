@@ -144,6 +144,6 @@ export interface PolicyDistribution { id: string; versionId: string; scopeType: 
 
 export interface PolicyChange { id: string; policyDocumentId: string; status: string; contentHash: string; message: string; }
 
-export interface RoleAssignment { id: string; memberId: string; roleId: string; teamId: string | null; projectId: string | null; }
+export interface RoleAssignment { id: string; userId: string; roleId: string; organizationId: string; teamId: string | null; projectId: string | null; }
 
-export interface RoleResponse { id: string; code: string; name: string; scope: string; }
+export interface RoleResponse { id: string; roleCode: string; roleName: string; description: string | null; scope: string; }

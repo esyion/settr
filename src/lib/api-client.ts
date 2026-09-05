@@ -280,7 +280,7 @@ export const api = {
         encodeURIComponent(projectId),
     ),
   listRoles: (organizationId: string) =>
-    request<{ id: string; code: string; name: string; scope: string }[]>(
+    request<import("@/lib/contracts").RoleResponse[]>(
       "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/roles",
     ),
   listRoleAssignments: (organizationId: string) =>
