@@ -65,7 +65,7 @@ export function AppSidebar({
             <p className="text-sm font-semibold tracking-tight">Agents Plus</p>
           </div>
         </div>
-              <div className="px-2 pb-2 group-data-[collapsible=icon]:hidden">
+        <div className="px-2 pb-2 group-data-[collapsible=icon]:hidden">
           <ContextSwitcher />
         </div>
       </SidebarHeader>

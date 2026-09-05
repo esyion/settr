@@ -29,8 +29,9 @@ function readableError(error: unknown, fallback: string): string {
 }
 
 /**
- * 工作区上下文 hook：在 (app) 布局首次挂载时拉取用户所属组织列表，
- * 之后由 zustand store 持有与切换。
+ * 工作区上下文数据加载 hook：必须在 (app)/layout.tsx 内挂载一次，
+ * 之后通过 features/context/workspace-context 的 Provider 共享给子组件。
+ * 任何在子组件重复调用都会触发重复的 listMyOrganizations 请求。
  */
 export function useWorkspaceContext(): WorkspaceContextApi {
   const scope = useWorkspaceStore((s) => s.scope);
@@ -57,6 +58,7 @@ export function useWorkspaceContext(): WorkspaceContextApi {
     }
   }, [setOrganizations]);
 
+  // 首次挂载时拉取用户所属组织列表；与 zustand store 同步副作用属于外部系统同步。
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     void refresh();

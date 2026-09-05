@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { safeReturnUrl as pickSafeReturnUrl } from "@/lib/safe-return-url";
 import { AuthFormPanel } from "@/features/auth/components/auth-form-panel";
 import {
   AuthPageShell,
@@ -14,8 +15,7 @@ import { useDeviceIdentity } from "@/features/auth/use-device-identity";
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get("returnUrl");
-  const safeReturnUrl = returnUrl && returnUrl.startsWith("/") ? returnUrl : null;
+  const safeReturnUrl = pickSafeReturnUrl(searchParams.get("returnUrl"));
 
   const device = useDeviceIdentity();
 

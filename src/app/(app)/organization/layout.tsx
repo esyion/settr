@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useWorkspaceContext } from "@/features/context/hooks/use-workspace-context";
+import { useWorkspaceContextValue } from "@/features/context/workspace-context";
 import { toast } from "sonner";
 
 /**
@@ -14,7 +14,7 @@ export default function OrganizationLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const ctx = useWorkspaceContext();
+  const ctx = useWorkspaceContextValue();
   const router = useRouter();
 
   useEffect(() => {

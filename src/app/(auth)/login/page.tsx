@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { safeReturnUrl as pickSafeReturnUrl } from "@/lib/safe-return-url";
 import { AuthFormPanel } from "@/features/auth/components/auth-form-panel";
 import {
   AuthPageShell,
@@ -19,8 +20,7 @@ import { loadSession } from "@/lib/session-store";
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get("returnUrl");
-  const safeReturnUrl = returnUrl && returnUrl.startsWith("/") ? returnUrl : null;
+  const safeReturnUrl = pickSafeReturnUrl(searchParams.get("returnUrl"));
 
   const device = useDeviceIdentity();
 

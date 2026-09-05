@@ -11,14 +11,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useWorkspaceContext } from "@/features/context/hooks/use-workspace-context";
+import { useWorkspaceContextValue } from "@/features/context/workspace-context";
 import { toast } from "sonner";
 
 /**
  * 上下文切换器：在侧边栏顶部显示当前激活的工作区，并允许在个人空间 / 组织之间切换。
  */
 export function ContextSwitcher() {
-  const ctx = useWorkspaceContext();
+  const ctx = useWorkspaceContextValue();
   const router = useRouter();
 
   const triggerLabel =

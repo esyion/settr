@@ -25,6 +25,8 @@ import {
   useSyncController,
 } from "@/features/sync/sync-controller-context";
 import { useSyncController as useSyncControllerInstance } from "@/features/sync/use-sync-controller";
+import { useWorkspaceContext } from "@/features/context/hooks/use-workspace-context";
+import { WorkspaceContext } from "@/features/context/workspace-context";
 
 const PAGE_META: Record<string, string> = {
   "/overview": "概览",
@@ -47,10 +49,13 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const workspace = useWorkspaceContext();
   return (
-    <SyncControllerProvider value={useSyncControllerInstance()}>
-      <AppLayoutShell>{children}</AppLayoutShell>
-    </SyncControllerProvider>
+    <WorkspaceContext.Provider value={workspace}>
+      <SyncControllerProvider value={useSyncControllerInstance()}>
+        <AppLayoutShell>{children}</AppLayoutShell>
+      </SyncControllerProvider>
+    </WorkspaceContext.Provider>
   );
 }
 
