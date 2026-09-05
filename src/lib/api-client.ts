@@ -333,6 +333,37 @@ export const api = {
         encodeURIComponent(projectId),
       { method: "DELETE" },
     ),
+
+  listInvitations: (organizationId: string) =>
+    request<import("@/lib/contracts").Invitation[]>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/invitations"
+    ),
+  createInvitation: (
+    organizationId: string,
+    input: { email: string; roleId: string | null; teamIds: string[] }
+  ) =>
+    request<import("@/lib/contracts").Invitation>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/invitations",
+      { method: "POST", body: input },
+    ),
+  revokeInvitation: (organizationId: string, invitationId: string) =>
+    request<void>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/invitations/" +
+        encodeURIComponent(invitationId),
+      { method: "DELETE" },
+    ),
+  acceptInvitation: (token: string) =>
+    request<{ organizationId: string }>(
+      "/api/v1/invitations/accept",
+      { method: "POST", body: { token } },
+    ),
+
   renameProject: (
     organizationId: string,
     teamId: string,
