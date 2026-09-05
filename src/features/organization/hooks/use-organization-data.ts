@@ -5,15 +5,15 @@ import { api, ApiClientError } from "@/lib/api-client";
 import type {
   EffectivePolicies,
   Organization,
-  OrganizationMember,
-  PendingPolicyRequest,
+  Membership,
+  PolicyReviewRequest,
   PolicyDistribution,
   PolicyVersion,
   Project,
   RoleAssignment,
-  RoleResponse,
+  Role,
   Team,
-  TeamMember,
+  TeamMembership,
 } from "@/lib/contracts";
 
 /**
@@ -29,11 +29,11 @@ export interface OrganizationDataApi {
   organizations: Organization[];
   teams: Team[];
   projects: Project[];
-  members: OrganizationMember[];
-  teamMembers: TeamMember[];
-  roles: RoleResponse[];
+  members: Membership[];
+  teamMembers: TeamMembership[];
+  roles: Role[];
   roleAssignments: RoleAssignment[];
-  pendingPolicies: PendingPolicyRequest[];
+  pendingPolicies: PolicyReviewRequest[];
   policyVersions: PolicyVersion[];
   distributions: PolicyDistribution[];
   effectivePolicies: EffectivePolicies | null;
@@ -49,20 +49,20 @@ export interface OrganizationDataApi {
   createOrganization: (name: string) => Promise<void>;
   createTeam: (name: string) => Promise<void>;
   createProject: (name: string) => Promise<void>;
-  addOrganizationMember: (userId: string) => Promise<void>;
-  disableOrganizationMember: (id: string) => Promise<void>;
-  enableOrganizationMember: (id: string) => Promise<void>;
-  removeOrganizationMember: (id: string) => Promise<void>;
-  addTeamMember: (organizationMemberId: string) => Promise<void>;
-  disableTeamMember: (organizationMemberId: string) => Promise<void>;
-  enableTeamMember: (organizationMemberId: string) => Promise<void>;
-  removeTeamMember: (organizationMemberId: string) => Promise<void>;
-  submitPolicyChange: (input: {
+  addMembership: (userId: string) => Promise<void>;
+  disableMembership: (id: string) => Promise<void>;
+  enableMembership: (id: string) => Promise<void>;
+  removeMembership: (id: string) => Promise<void>;
+  addTeamMembership: (organizationMemberId: string) => Promise<void>;
+  disableTeamMembership: (organizationMemberId: string) => Promise<void>;
+  enableTeamMembership: (organizationMemberId: string) => Promise<void>;
+  removeTeamMembership: (organizationMemberId: string) => Promise<void>;
+  submitPolicyDraft: (input: {
     policyType: "AGENT" | "CLAUDE";
     content: string;
     message: string;
   }) => Promise<void>;
-  reviewPolicyChange: (
+  reviewPolicyRequest: (
     requestId: string,
     decision: "APPROVED" | "REJECTED",
   ) => Promise<void>;
@@ -87,11 +87,11 @@ export function useOrganizationData(): OrganizationDataApi {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [members, setMembers] = useState<OrganizationMember[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [roles, setRoles] = useState<RoleResponse[]>([]);
+  const [members, setMembers] = useState<Membership[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMembership[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [roleAssignments, setRoleAssignments] = useState<RoleAssignment[]>([]);
-  const [pendingPolicies, setPendingPolicies] = useState<PendingPolicyRequest[]>([]);
+  const [pendingPolicies, setPendingPolicies] = useState<PolicyReviewRequest[]>([]);
   const [policyVersions, setPolicyVersions] = useState<PolicyVersion[]>([]);
   const [distributions, setDistributions] = useState<PolicyDistribution[]>([]);
   const [effectivePolicies, setEffectivePolicies] = useState<EffectivePolicies | null>(null);
@@ -160,7 +160,7 @@ export function useOrganizationData(): OrganizationDataApi {
     void run("加载组织数据", async () => {
       const [teamList, memberList, roleList] = await Promise.all([
         api.listTeams(organizationId),
-        api.listOrganizationMembers(organizationId),
+        api.listMemberships(organizationId),
         api.listRoles(organizationId),
       ]);
       if (cancelled) return;
@@ -180,7 +180,7 @@ export function useOrganizationData(): OrganizationDataApi {
           .then(setDistributions)
           .catch(() => setDistributions([])),
         api
-          .listPendingPolicyChanges(organizationId)
+          .listPolicyReviewRequests(organizationId)
           .then(setPendingPolicies)
           .catch(() => setPendingPolicies([])),
       ];
@@ -205,7 +205,7 @@ export function useOrganizationData(): OrganizationDataApi {
     void run("加载团队", async () => {
       const [projectList, memberList] = await Promise.all([
         api.listProjects(organizationId, teamId),
-        api.listTeamMembers(teamId),
+        api.listTeamMemberships(teamId),
       ]);
       if (cancelled) return;
       setProjects(projectList);
@@ -250,7 +250,7 @@ export function useOrganizationData(): OrganizationDataApi {
     await run("刷新", async () => {
       const [teamList, memberList, roleList, projectList] = await Promise.all([
         api.listTeams(organizationId),
-        api.listOrganizationMembers(organizationId),
+        api.listMemberships(organizationId),
         api.listRoles(organizationId),
         teamId
           ? api.listProjects(organizationId, teamId)
@@ -302,12 +302,12 @@ export function useOrganizationData(): OrganizationDataApi {
     [organizationId, teamId, run],
   );
 
-  const addOrganizationMember = useCallback(
+  const addMembership = useCallback(
     async (userId: string) => {
       const trimmed = userId.trim();
       if (!trimmed || !organizationId) return;
       await run("添加成员", async () => {
-        const item = await api.addOrganizationMember(organizationId, trimmed);
+        const item = await api.addMembership(organizationId, trimmed);
         setMembers((current) => [...current, item]);
       });
     },
@@ -319,21 +319,21 @@ export function useOrganizationData(): OrganizationDataApi {
       if (!organizationId) return;
       await run("成员" + action, async () => {
         if (action === "enable") {
-          await api.enableOrganizationMember(organizationId, memberId);
+          await api.enableMembership(organizationId, memberId);
           setMembers((current) =>
             current.map((m) =>
               m.id === memberId ? { ...m, status: "ACTIVE" } : m,
             ),
           );
         } else if (action === "disable") {
-          await api.disableOrganizationMember(organizationId, memberId);
+          await api.disableMembership(organizationId, memberId);
           setMembers((current) =>
             current.map((m) =>
               m.id === memberId ? { ...m, status: "DISABLED" } : m,
             ),
           );
         } else {
-          await api.removeOrganizationMember(organizationId, memberId);
+          await api.removeMembership(organizationId, memberId);
           setMembers((current) => current.filter((m) => m.id !== memberId));
         }
       });
@@ -341,15 +341,15 @@ export function useOrganizationData(): OrganizationDataApi {
     [organizationId, run],
   );
 
-  const enableOrganizationMember = useCallback(
+  const enableMembership = useCallback(
     (id: string) => updateOrganizationMember(id, "enable"),
     [updateOrganizationMember],
   );
-  const disableOrganizationMember = useCallback(
+  const disableMembership = useCallback(
     (id: string) => updateOrganizationMember(id, "disable"),
     [updateOrganizationMember],
   );
-  const removeOrganizationMember = useCallback(
+  const removeMembership = useCallback(
     (id: string) => updateOrganizationMember(id, "remove"),
     [updateOrganizationMember],
   );
@@ -362,48 +362,48 @@ export function useOrganizationData(): OrganizationDataApi {
       if (!teamId) return;
       await run("团队成员" + action, async () => {
         if (action === "enable") {
-          await api.enableTeamMember(teamId, organizationMemberId);
+          await api.enableTeamMembership(teamId, organizationMemberId);
         } else if (action === "disable") {
-          await api.disableTeamMember(teamId, organizationMemberId);
+          await api.disableTeamMembership(teamId, organizationMemberId);
         } else {
-          await api.removeTeamMember(teamId, organizationMemberId);
+          await api.removeTeamMembership(teamId, organizationMemberId);
         }
-        const fresh = await api.listTeamMembers(teamId);
+        const fresh = await api.listTeamMemberships(teamId);
         setTeamMembers(fresh);
       });
     },
     [teamId, run],
   );
 
-  const addTeamMember = useCallback(
+  const addTeamMembership = useCallback(
     async (organizationMemberId: string) => {
       if (!teamId || !organizationMemberId) return;
       await run("添加团队成员", async () => {
-        await api.addTeamMember(teamId, organizationMemberId);
-        const fresh = await api.listTeamMembers(teamId);
+        await api.addTeamMembership(teamId, organizationMemberId);
+        const fresh = await api.listTeamMemberships(teamId);
         setTeamMembers(fresh);
       });
     },
     [teamId, run],
   );
 
-  const enableTeamMember = useCallback(
+  const enableTeamMembership = useCallback(
     (organizationMemberId: string) =>
       updateTeamMember(organizationMemberId, "enable"),
     [updateTeamMember],
   );
-  const disableTeamMember = useCallback(
+  const disableTeamMembership = useCallback(
     (organizationMemberId: string) =>
       updateTeamMember(organizationMemberId, "disable"),
     [updateTeamMember],
   );
-  const removeTeamMember = useCallback(
+  const removeTeamMembership = useCallback(
     (organizationMemberId: string) =>
       updateTeamMember(organizationMemberId, "remove"),
     [updateTeamMember],
   );
 
-  const submitPolicyChange = useCallback(
+  const submitPolicyDraft = useCallback(
     async (input: {
       policyType: "AGENT" | "CLAUDE";
       content: string;
@@ -411,19 +411,19 @@ export function useOrganizationData(): OrganizationDataApi {
     }) => {
       if (!organizationId) return;
       await run("提交规范申请", async () => {
-        await api.submitPolicyChange(organizationId, input);
-        const fresh = await api.listPendingPolicyChanges(organizationId);
+        await api.submitPolicyDraft(organizationId, input);
+        const fresh = await api.listPolicyReviewRequests(organizationId);
         setPendingPolicies(fresh);
       });
     },
     [organizationId, run],
   );
 
-  const reviewPolicyChange = useCallback(
+  const reviewPolicyRequest = useCallback(
     async (requestId: string, decision: "APPROVED" | "REJECTED") => {
       if (!organizationId) return;
       await run("审核规范申请", async () => {
-        await api.reviewPolicyChange(organizationId, requestId, decision);
+        await api.reviewPolicyRequest(organizationId, requestId, decision);
         setPendingPolicies((current) =>
           current.filter((p) => p.id !== requestId),
         );
@@ -477,7 +477,7 @@ export function useOrganizationData(): OrganizationDataApi {
     async (assignmentId: string) => {
       if (!organizationId) return;
       await run("撤销角色", async () => {
-        await api.revokeRole(organizationId, assignmentId);
+        await api.revokeRoleAssignment(assignmentId);
         setRoleAssignments((current) =>
           current.filter((a) => a.id !== assignmentId),
         );
@@ -511,16 +511,16 @@ export function useOrganizationData(): OrganizationDataApi {
       createOrganization,
       createTeam,
       createProject,
-      addOrganizationMember,
-      enableOrganizationMember,
-      disableOrganizationMember,
-      removeOrganizationMember,
-      addTeamMember,
-      enableTeamMember,
-      disableTeamMember,
-      removeTeamMember,
-      submitPolicyChange,
-      reviewPolicyChange,
+      addMembership,
+      enableMembership,
+      disableMembership,
+      removeMembership,
+      addTeamMembership,
+      enableTeamMembership,
+      disableTeamMembership,
+      removeTeamMembership,
+      submitPolicyDraft,
+      reviewPolicyRequest,
       loadPolicyHistory,
       withdrawDistribution,
       assignRole,
@@ -547,16 +547,16 @@ export function useOrganizationData(): OrganizationDataApi {
       createOrganization,
       createTeam,
       createProject,
-      addOrganizationMember,
-      enableOrganizationMember,
-      disableOrganizationMember,
-      removeOrganizationMember,
-      addTeamMember,
-      enableTeamMember,
-      disableTeamMember,
-      removeTeamMember,
-      submitPolicyChange,
-      reviewPolicyChange,
+      addMembership,
+      enableMembership,
+      disableMembership,
+      removeMembership,
+      addTeamMembership,
+      enableTeamMembership,
+      disableTeamMembership,
+      removeTeamMembership,
+      submitPolicyDraft,
+      reviewPolicyRequest,
       loadPolicyHistory,
       withdrawDistribution,
       assignRole,

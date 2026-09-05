@@ -42,7 +42,7 @@ function OrganizationMembersCard({ data }: { data: OrganizationDataApi }) {
   const [userId, setUserId] = useState("");
   const busy = data.busy === "添加成员";
   async function submit() {
-    await data.addOrganizationMember(userId);
+    await data.addMembership(userId);
     setUserId("");
   }
   return (
@@ -106,7 +106,7 @@ function OrganizationMembersCard({ data }: { data: OrganizationDataApi }) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => void data.disableOrganizationMember(member.id)}
+                      onClick={() => void data.disableMembership(member.id)}
                       disabled={data.busy === "成员disable"}
                     >
                       禁用
@@ -115,7 +115,7 @@ function OrganizationMembersCard({ data }: { data: OrganizationDataApi }) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => void data.enableOrganizationMember(member.id)}
+                      onClick={() => void data.enableMembership(member.id)}
                       disabled={data.busy === "成员enable"}
                     >
                       启用
@@ -124,7 +124,7 @@ function OrganizationMembersCard({ data }: { data: OrganizationDataApi }) {
                   <Button
                     size="sm"
                     variant="destructive"
-                    onClick={() => void data.removeOrganizationMember(member.id)}
+                    onClick={() => void data.removeMembership(member.id)}
                     disabled={data.busy === "成员remove"}
                   >
                     移除
@@ -143,7 +143,7 @@ function TeamMembersCard({ data }: { data: OrganizationDataApi }) {
   const [organizationMemberId, setOrganizationMemberId] = useState("");
   const busy = data.busy === "添加团队成员";
   async function submit() {
-    await data.addTeamMember(organizationMemberId);
+    await data.addTeamMembership(organizationMemberId);
     setOrganizationMemberId("");
   }
   return (
@@ -232,7 +232,7 @@ function TeamMembersCard({ data }: { data: OrganizationDataApi }) {
                       size="sm"
                       variant="ghost"
                       onClick={() =>
-                        void data.disableTeamMember(member.organizationMemberId)
+                        void data.disableTeamMembership(member.organizationMemberId)
                       }
                       disabled={data.busy === "团队成员disable"}
                     >
@@ -243,7 +243,7 @@ function TeamMembersCard({ data }: { data: OrganizationDataApi }) {
                       size="sm"
                       variant="ghost"
                       onClick={() =>
-                        void data.enableTeamMember(member.organizationMemberId)
+                        void data.enableTeamMembership(member.organizationMemberId)
                       }
                       disabled={data.busy === "团队成员enable"}
                     >
@@ -254,7 +254,7 @@ function TeamMembersCard({ data }: { data: OrganizationDataApi }) {
                     size="sm"
                     variant="destructive"
                     onClick={() =>
-                      void data.removeTeamMember(member.organizationMemberId)
+                      void data.removeTeamMembership(member.organizationMemberId)
                     }
                     disabled={data.busy === "团队成员remove"}
                   >

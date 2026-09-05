@@ -182,7 +182,7 @@ export const api = {
         "/projects",
       { method: "POST", body: { name } },
     ),
-  enableOrganizationMember: (organizationId: string, memberId: string) =>
+  enableMembership: (organizationId: string, memberId: string) =>
     request<void>(
       "/api/v1/organizations/" +
         encodeURIComponent(organizationId) +
@@ -191,7 +191,7 @@ export const api = {
         "/enable",
       { method: "POST" },
     ),
-  disableOrganizationMember: (organizationId: string, memberId: string) =>
+  disableMembership: (organizationId: string, memberId: string) =>
     request<void>(
       "/api/v1/organizations/" +
         encodeURIComponent(organizationId) +
@@ -200,7 +200,7 @@ export const api = {
         "/disable",
       { method: "POST" },
     ),
-  removeOrganizationMember: (organizationId: string, memberId: string) =>
+  removeMembership: (organizationId: string, memberId: string) =>
     request<void>(
       "/api/v1/organizations/" +
         encodeURIComponent(organizationId) +
@@ -208,7 +208,7 @@ export const api = {
         encodeURIComponent(memberId),
       { method: "DELETE" },
     ),
-  enableTeamMember: (teamId: string, memberId: string) =>
+  enableTeamMembership: (teamId: string, memberId: string) =>
     request<void>(
       "/api/v1/teams/" +
         encodeURIComponent(teamId) +
@@ -217,7 +217,7 @@ export const api = {
         "/enable",
       { method: "POST" },
     ),
-  disableTeamMember: (teamId: string, memberId: string) =>
+  disableTeamMembership: (teamId: string, memberId: string) =>
     request<void>(
       "/api/v1/teams/" +
         encodeURIComponent(teamId) +
@@ -226,8 +226,8 @@ export const api = {
         "/disable",
       { method: "POST" },
     ),
-  addOrganizationMember: (organizationId: string, userId: string) =>
-    request<import("@/lib/contracts").OrganizationMember>(
+  addMembership: (organizationId: string, userId: string) =>
+    request<import("@/lib/contracts").Membership>(
       "/api/v1/organizations/" +
         encodeURIComponent(organizationId) +
         "/members",
@@ -237,16 +237,16 @@ export const api = {
     request<import("@/lib/contracts").Team[]>(
       "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/teams",
     ),
-  listTeamMembers: (teamId: string) =>
-    request<import("@/lib/contracts").TeamMember[]>(
+  listTeamMemberships: (teamId: string) =>
+    request<import("@/lib/contracts").TeamMembership[]>(
       "/api/v1/teams/" + encodeURIComponent(teamId) + "/members",
     ),
-  addTeamMember: (teamId: string, organizationMemberId: string) =>
-    request<import("@/lib/contracts").TeamMember>(
+  addTeamMembership: (teamId: string, organizationMemberId: string) =>
+    request<import("@/lib/contracts").TeamMembership>(
       "/api/v1/teams/" + encodeURIComponent(teamId) + "/members",
       { method: "POST", body: { organizationMemberId } },
     ),
-  removeTeamMember: (teamId: string, memberId: string) =>
+  removeTeamMembership: (teamId: string, memberId: string) =>
     request<void>(
       "/api/v1/teams/" +
         encodeURIComponent(teamId) +
@@ -262,8 +262,8 @@ export const api = {
         encodeURIComponent(teamId) +
         "/projects",
     ),
-  listOrganizationMembers: (organizationId: string) =>
-    request<import("@/lib/contracts").OrganizationMember[]>(
+  listMemberships: (organizationId: string) =>
+    request<import("@/lib/contracts").Membership[]>(
       "/api/v1/organizations/" +
         encodeURIComponent(organizationId) +
         "/members",
@@ -282,7 +282,7 @@ export const api = {
         encodeURIComponent(projectId),
     ),
   listRoles: (organizationId: string) =>
-    request<import("@/lib/contracts").RoleResponse[]>(
+    request<import("@/lib/contracts").Role[]>(
       "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/roles",
     ),
   listRoleAssignments: (organizationId: string) =>
@@ -291,12 +291,9 @@ export const api = {
         encodeURIComponent(organizationId) +
         "/roles/assignments",
     ),
-  revokeRole: (organizationId: string, assignmentId: string) =>
+  revokeRoleAssignment: (assignmentId: string) =>
     request<void>(
-      "/api/v1/organizations/" +
-        encodeURIComponent(organizationId) +
-        "/roles/" +
-        encodeURIComponent(assignmentId),
+      "/api/v1/role-assignments/" + encodeURIComponent(assignmentId),
       { method: "DELETE" },
     ),
   withdrawPolicyDistribution: (
@@ -325,22 +322,22 @@ export const api = {
       projectId?: string;
     },
   ) =>
-    request<import("@/lib/contracts").RoleResponse>(
+    request<import("@/lib/contracts").Role>(
       "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/roles",
       { method: "POST", body: input },
     ),
-  submitPolicyChange: (
+  submitPolicyDraft: (
     organizationId: string,
     input: { policyType: "AGENT" | "CLAUDE"; content: string; message: string },
   ) =>
-    request<import("@/lib/contracts").PolicyChange>(
+    request<import("@/lib/contracts").PolicyDraft>(
       "/api/v1/organizations/" +
         encodeURIComponent(organizationId) +
         "/policies/changes",
       { method: "POST", body: input },
     ),
-  listPendingPolicyChanges: (organizationId: string) =>
-    request<import("@/lib/contracts").PendingPolicyRequest[]>(
+  listPolicyReviewRequests: (organizationId: string) =>
+    request<import("@/lib/contracts").PolicyReviewRequest[]>(
       "/api/v1/organizations/" +
         encodeURIComponent(organizationId) +
         "/policies/changes/pending",
@@ -361,13 +358,13 @@ export const api = {
         "/policies/distributions",
       { method: "POST", body: input },
     ),
-  reviewPolicyChange: (
+  reviewPolicyRequest: (
     organizationId: string,
     requestId: string,
     decision: "APPROVED" | "REJECTED",
     comment?: string,
   ) =>
-    request<import("@/lib/contracts").PolicyChange>(
+    request<import("@/lib/contracts").PolicyDraft>(
       "/api/v1/organizations/" +
         encodeURIComponent(organizationId) +
         "/policies/changes/" +

@@ -45,7 +45,7 @@ function SubmitPolicyCard({ data }: { data: OrganizationDataApi }) {
   async function submit() {
     if (!data.organizationId) return;
     if (!content.trim() || !message.trim()) return;
-    await data.submitPolicyChange({ policyType: type, content, message });
+    await data.submitPolicyDraft({ policyType: type, content, message });
     setContent("");
     setMessage("");
   }
@@ -148,7 +148,7 @@ function PendingPoliciesCard({ data }: { data: OrganizationDataApi }) {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
-                    onClick={() => void data.reviewPolicyChange(item.id, "APPROVED")}
+                    onClick={() => void data.reviewPolicyRequest(item.id, "APPROVED")}
                     disabled={
                       data.busy === "审核规范申请" && Boolean(data.busy)
                     }
@@ -159,7 +159,7 @@ function PendingPoliciesCard({ data }: { data: OrganizationDataApi }) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => void data.reviewPolicyChange(item.id, "REJECTED")}
+                    onClick={() => void data.reviewPolicyRequest(item.id, "REJECTED")}
                     disabled={
                       data.busy === "审核规范申请" && Boolean(data.busy)
                     }

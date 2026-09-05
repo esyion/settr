@@ -132,18 +132,32 @@ export interface ApplyRemoteDocumentRequest {
 export interface Organization { id: string; name: string; ownerUserId: string; }
 export interface Team { id: string; organizationId: string; name: string; defaultTeam: boolean; }
 export interface Project { id: string; organizationId: string; teamId: string; name: string; }
-export interface OrganizationMember { id: string; organizationId: string; userId: string; status: string; }
+export interface Membership { id: string; organizationId: string; userId: string; status: string; }
 export interface EffectivePolicy { versionId: string; content: string; sha256: string; sourceScope: string; }
 export interface EffectivePolicies { agent: EffectivePolicy | null; claude: EffectivePolicy | null; }
 
-export interface TeamMember { id: string; teamId: string; organizationMemberId: string; status: string; }
+export interface TeamMembership { id: string; teamId: string; organizationMemberId: string; status: string; }
 
-export interface PendingPolicyRequest { id: string; message: string; status: string; }
+export interface PolicyReviewRequest { id: string; message: string; status: string; }
 export interface PolicyVersion { id: string; documentId: string; versionNo: number; content: string; sha256: string; status: string; }
 export interface PolicyDistribution { id: string; versionId: string; scopeType: string; teamId: string | null; projectId: string | null; memberId: string | null; withdrawn: boolean; }
 
-export interface PolicyChange { id: string; policyDocumentId: string; status: string; contentHash: string; message: string; }
+export interface PolicyDraft { id: string; policyDocumentId: string; status: string; contentHash: string; message: string; }
 
 export interface RoleAssignment { id: string; userId: string; roleId: string; organizationId: string; teamId: string | null; projectId: string | null; }
 
-export interface RoleResponse { id: string; roleCode: string; roleName: string; description: string | null; scope: string; }
+export interface Role { id: string; roleCode: string; roleName: string; description: string | null; scope: string; }
+
+export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "REVOKED";
+
+export interface Invitation {
+  id: string;
+  organizationId: string;
+  email: string;
+  roleId: string | null;
+  teamIds: string[];
+  token: string;
+  expiresAt: string;
+  status: InvitationStatus;
+  createdAt: string;
+}
