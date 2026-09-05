@@ -1705,6 +1705,83 @@ git commit -m "feat(server): add SkillNotificationController"
 
 ---
 
+### Task 20.5: Skill 搜索与 check-update 端点
+
+**Files:**
+- Modify: `D:/workspace/agents-plus-server/src/main/java/com/krmeow/agentsplus/controller/SkillController.java`
+- Modify: `D:/workspace/agents-plus-server/src/main/java/com/krmeow/agentsplus/service/SkillService.java`
+
+- [ ] **Step 1: SkillService 加 search 与 createCheckUpdateTask**
+
+```java
+// 在 SkillService 类内追加:
+
+public List<SkillSummary> search(Long userId, String query, int page, int size) {
+    return skillRepository.listVisible(userId, null, query, page, size).stream()
+            .map(this::toSummary)
+            .filter(s -> query == null || query.isBlank()
+                    || s.name().toLowerCase().contains(query.toLowerCase()))
+            .collect(Collectors.toList());
+}
+
+public String triggerCheckUpdate(Long userId, Long skillId) {
+    SkillEntity skill = skillRepository.findById(skillId)
+            .orElseThrow(() -> new ApiException(ErrorCode.SKILL_NOT_FOUND));
+    if (!userId.equals(skill.getCreatedBy())) {
+        throw new ApiException(ErrorCode.SKILL_FORBIDDEN);
+    }
+    // MVP:同步执行 worker 的一次性扫描并返回其结果摘要
+    // 后续增量:改为 @Async 任务,本方法立即返回 taskId
+    String newVersion = new SkillUpdateWorker(
+            skillRepository,
+            skillVersionMapper,
+            new okhttp3.OkHttpClient(),
+            new com.fasterxml.jackson.databind.ObjectMapper()
+    ).latestVersionOnUpstream(skill);
+    if (newVersion == null) {
+        throw new ApiException(ErrorCode.SKILL_SOURCE_FETCH_FAILED);
+    }
+    // 这里把"new version"暴露成 taskId 是个偷懒:用 skillId+newVersion 拼接成"taskId"
+    return skillId + ":" + newVersion;
+}
+```
+
+- [ ] **Step 2: SkillController 加 search + check-update 端点**
+
+```java
+// 在 SkillController 类内追加:
+
+@GetMapping("/search")
+public List<SkillSummary> search(
+        @RequestAttribute("userId") Long userId,
+        @RequestParam("q") String q,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size) {
+    return skillService.search(userId, q, page, size);
+}
+
+@PostMapping("/{id}/check-update")
+public String triggerCheckUpdate(
+        @RequestAttribute("userId") Long userId,
+        @PathVariable Long id) {
+    return skillService.triggerCheckUpdate(userId, id);
+}
+```
+
+> **注意**:`search` 与 `list` 的 URL 冲突(@GetMapping("/search") 比 `@GetMapping("/{id}") 更具体,Spring 优先匹配字面量段,无需调顺序)
+
+- [ ] **Step 3: 编译 + 提交**
+
+```bash
+cd D:/workspace/agents-plus-server && \
+mvn -q -DskipTests compile && \
+git add src/main/java/com/krmeow/agentsplus/controller/SkillController.java \
+        src/main/java/com/krmeow/agentsplus/service/SkillService.java && \
+git commit -m "feat(server): add /skills/search and /skills/{id}/check-update endpoints"
+```
+
+---
+
 ## Phase 6: 客户端基础模块
 
 ### Task 21: Skill 模块目录骨架与 IPC 占位
@@ -2479,6 +2556,47 @@ fn unsupported_harness_is_noop() {
     }).unwrap();
     assert!(matches!(outcome.method_used, MethodUsed::Noop));
 }
+
+#[test]
+fn pi_target_mismatch_returns_error_unless_force() {
+    let src_root = tempdir().unwrap();
+    let dest_root = tempdir().unwrap();
+    make_skill_src(src_root.path());
+    fs::create_dir_all(dest_root.path().join("my-skill")).unwrap();
+    fs::write(dest_root.path().join("my-skill/SKILL.md"), "different content").unwrap();
+    let err = dispatch(DispatchRequest {
+        skill_name: "my-skill",
+        source_root: src_root.path().to_path_buf(),
+        target_root: dest_root.path().to_path_buf(),
+        harness: HarnessId::Pi,
+        method: SyncMethod::Auto,
+        force: false,
+        target_exists: true,
+    }).unwrap_err();
+    assert!(matches!(err, DispatchError::PiTargetMismatch));
+}
+
+#[test]
+fn pi_target_match_proceeds() {
+    let src_root = tempdir().unwrap();
+    let dest_root = tempdir().unwrap();
+    make_skill_src(src_root.path());
+    fs::create_dir_all(dest_root.path().join("my-skill")).unwrap();
+    fs::copy(
+        src_root.path().join("my-skill/SKILL.md"),
+        dest_root.path().join("my-skill/SKILL.md"),
+    ).unwrap();
+    let outcome = dispatch(DispatchRequest {
+        skill_name: "my-skill",
+        source_root: src_root.path().to_path_buf(),
+        target_root: dest_root.path().to_path_buf(),
+        harness: HarnessId::Pi,
+        method: SyncMethod::Auto,
+        force: false,
+        target_exists: true,
+    }).unwrap();
+    assert!(matches!(outcome.method_used, MethodUsed::Copy));
+}
 ```
 
 - [ ] **Step 2: 实现**
@@ -2608,6 +2726,20 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> std::io::Result<()> {
         }
     }
     Ok(())
+}
+
+/// 递归计算目录内容的 SHA-256(对所有文件内容拼接后哈希)。用于 Pi 目标一致性比较。
+fn hash_dir(root: &Path) -> Result<String, std::io::Error> {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    for entry in walkdir::WalkDir::new(root).sort_by_file_name() {
+        let entry = entry.map_err(std::io::Error::other)?;
+        if entry.file_type().is_file() {
+            let bytes = std::fs::read(entry.path())?;
+            hasher.update(&bytes);
+        }
+    }
+    Ok(format!("{:x}", hasher.finalize()))
 }
 ```
 
