@@ -136,7 +136,13 @@ export interface Membership { id: string; organizationId: string; userId: string
 export interface EffectivePolicy { versionId: string; content: string; sha256: string; sourceScope: string; }
 export interface EffectivePolicies { agent: EffectivePolicy | null; claude: EffectivePolicy | null; }
 
-export interface TeamMembership { id: string; teamId: string; organizationMemberId: string; status: string; }
+export interface TeamMembership {
+  id: string;
+  teamId: string;
+  organizationMemberId: string;
+  status: string;
+  joinedAt: string;
+}
 
 export interface PolicyReviewRequest { id: string; message: string; status: string; }
 export interface PolicyVersion { id: string; documentId: string; versionNo: number; content: string; sha256: string; status: string; }
