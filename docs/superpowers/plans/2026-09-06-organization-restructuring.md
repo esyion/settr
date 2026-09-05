@@ -815,7 +815,7 @@ cd D:/workspace/agents-plus-server && git add . && git commit -m "refactor(api):
 
 ---
 
-### Task 2.4: 创建 features/context/index.ts
+### Task 2.4: 创建 features/context/index.ts [x]
 
 **Files:**
 - Create: `src/features/context/index.ts`
@@ -852,7 +852,7 @@ git commit -m "feat(context): add barrel exports"
 
 ---
 
-### Task 2.5: 创建 features/teams/
+### Task 2.5: 创建 features/teams/ [x]
 
 **Files:**
 - Create: `src/features/teams/types.ts`
@@ -1113,7 +1113,7 @@ git commit -m "feat(teams): extract teams feature from organization"
 
 ---
 
-### Task 2.6: 创建 features/memberships/
+### Task 2.6: 创建 features/memberships/ [x]
 
 **Files:**
 - Create: `src/features/memberships/types.ts`
@@ -1218,7 +1218,7 @@ git commit -m "feat(memberships): extract memberships feature from organization"
 
 ---
 
-### Task 2.7: 创建 features/policies/
+### Task 2.7: 创建 features/policies/ [x]
 
 **Files:**
 - Create: `src/features/policies/types.ts`
@@ -1326,7 +1326,7 @@ git commit -m "feat(policies): extract policies feature from organization"
 
 ---
 
-### Task 2.8: 创建 features/roles/
+### Task 2.8: 创建 features/roles/ [x]
 
 **Files:**
 - Create: `src/features/roles/types.ts`
@@ -1397,7 +1397,7 @@ git commit -m "feat(roles): extract roles feature from organization"
 
 ---
 
-### Task 2.9: 创建 4 个独立 page
+### Task 2.9: 创建 4 个独立 page [x]
 
 **Files:**
 - Create: `src/app/(app)/organization/page.tsx`
@@ -1578,7 +1578,7 @@ git commit -m "feat(org-routes): split organization into 5 pages"
 
 ---
 
-### Task 2.10: 删除旧 src/features/organization/
+### Task 2.10: 删除旧 src/features/organization/ [x]
 
 **Files:**
 - Delete: `src/features/organization/` 整目录
@@ -1606,7 +1606,7 @@ git commit -m "refactor: remove legacy organization feature"
 
 ---
 
-### Task 2.11: 删除旧 organization/page.tsx
+### Task 2.11: 删除旧 organization/page.tsx [x]
 
 **Files:**
 - Delete: `src/app/(app)/organization/page.tsx`(旧 8 行版本)
