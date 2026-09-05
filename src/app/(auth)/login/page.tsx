@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { safeReturnUrl as pickSafeReturnUrl } from "@/lib/safe-return-url";
 import { AuthFormPanel } from "@/features/auth/components/auth-form-panel";
 import {
   AuthPageShell,
@@ -10,6 +9,7 @@ import {
 } from "@/features/auth/components/auth-page-shell";
 import { useDeviceIdentity } from "@/features/auth/use-device-identity";
 import { loadSession } from "@/lib/session-store";
+import { safeReturnUrl as pickSafeReturnUrl } from "@/lib/safe-return-url";
 
 /**
  * 登录页面。
@@ -18,10 +18,17 @@ import { loadSession } from "@/lib/session-store";
  * 已在会话中的用户会被自动重定向到概览页，避免重复输入凭据。
  */
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<AuthPageShell eyebrow="欢迎回来" title="登录到你的同步空间" />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const safeReturnUrl = pickSafeReturnUrl(searchParams.get("returnUrl"));
-
   const device = useDeviceIdentity();
 
   // 已登录用户访问 /login 时直接跳到概览页。

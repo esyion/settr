@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Building2, Mail } from "lucide-react";
 import {
@@ -24,6 +24,25 @@ import { membershipsApi } from "@/features/memberships/api";
  * </ul>
  */
 export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={<Skeleton />}>
+      <AcceptInviteContent />
+    </Suspense>
+  );
+}
+
+function Skeleton() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>接受组织邀请</CardTitle>
+        <CardDescription>加载中…</CardDescription>
+      </CardHeader>
+    </Card>
+  );
+}
+
+function AcceptInviteContent() {
   const params = useSearchParams();
   const router = useRouter();
   const token = params.get("token");
