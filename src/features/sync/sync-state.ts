@@ -66,6 +66,14 @@ function isAuthenticationError(error: unknown) {
 }
 
 /** Returns whether a locally saved revision no longer exists on the server. */
+function readableFailure(error: unknown) {
+  if (error instanceof ApiClientError) {
+    return (error.message || "请求失败") + (error.requestId ? "（请求 ID: " + error.requestId + "）" : "");
+  }
+  if (error instanceof Error) return error.message;
+  return "发生未知错误";
+}
+
 function isRevisionNotFound(error: unknown) {
   return error instanceof ApiClientError && error.code === 40402;
 }
@@ -116,28 +124,38 @@ export async function loadWorkspace(format: DocumentFormat): Promise<SyncState> 
     };
   }
   const document = await api.document(format);
-  const [devices, revisions] = await Promise.all([
-    api.devices(),
-    api.revisions(document.id, 1, 20),
-  ]);
-  let head: Revision | null = null;
+  const failures: string[] = [];
+  let devices: Awaited<ReturnType<typeof api.devices>> | null = null;
+  let revisions: Awaited<ReturnType<typeof api.revisions>> | null = null;
+  let head: Revision | null = await api.revision(document.id, document.headRevisionId);
   let base: Revision | null = null;
-  if (document.headRevisionId)
-    head = await api.revision(document.id, document.headRevisionId);
   let local = runtime.local;
-  if (
-    local.manifest.baseRevisionId &&
-    local.manifest.baseRevisionId !== document.headRevisionId
-  ) {
+  const baseRevisionId = local.manifest.baseRevisionId;
+  try {
+    const [deviceList, revisionList] = await Promise.all([
+      api.devices(),
+      api.revisions(document.id, 1, 20),
+    ]);
+    devices = deviceList;
+    revisions = revisionList;
+  } catch (error) {
+    failures.push(readableFailure(error));
+  }
+  if (baseRevisionId && baseRevisionId !== document.headRevisionId) {
     try {
-      base = await api.revision(document.id, local.manifest.baseRevisionId);
+      base = await api.revision(document.id, baseRevisionId);
     } catch (error) {
-      if (!isRevisionNotFound(error)) throw error;
-      local = await clearStaleBaseManifest(format, local);
+      if (!isRevisionNotFound(error)) {
+        failures.push(readableFailure(error));
+      } else {
+        local = await clearStaleBaseManifest(format, local);
+      }
     }
   }
-  const status = deriveStatus({ local, document, head });
-  return {
+  const status = failures.length > 0
+    ? deriveStatus({ local, document, head })
+    : deriveStatus({ local, document, head });
+  const baseResponse: SyncState = {
     status,
     format,
     local,
@@ -148,8 +166,12 @@ export async function loadWorkspace(format: DocumentFormat): Promise<SyncState> 
     base,
     devices,
     revisions,
-    message: null,
+    message: failures.length > 0 ? failures.join("；") : null,
     requestId: null,
     refreshedAt: new Date().toISOString(),
   };
+  if (failures.length > 0 && devices === null && revisions === null) {
+    return { ...baseResponse, status: "error" };
+  }
+  return baseResponse;
 }

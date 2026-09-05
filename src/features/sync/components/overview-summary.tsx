@@ -97,7 +97,7 @@ export function OverviewSummary({ state }: { state: SyncState }) {
       <Card>
         <CardHeader>
           <CardDescription>授权设备</CardDescription>
-          <CardTitle className="text-xl">{state.devices.length} 台</CardTitle>
+          <CardTitle className="text-xl">{state.devices?.length ?? 0} 台</CardTitle>
           <CardAction>
             <Laptop className="size-5 text-muted-foreground" />
           </CardAction>

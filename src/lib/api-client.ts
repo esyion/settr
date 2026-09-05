@@ -452,15 +452,22 @@ export const api = {
     ),
   documentHead: (documentId: string) =>
     request<Document>(
-      "/api/v1/documents/" + encodeURIComponent(documentId) + "/head",
+      "/api/v1/documents/" + encodeURIComponent(documentId) + "/head"
     ),
-  revision: (documentId: string, revisionId: string) =>
-    request<Revision>(
+  /**
+   * 获取单个版本详情；版本标识为空时直接返回 null，避免拼接出 /revisions/null。
+   */
+  revision: (documentId: string, revisionId: string | null | undefined) => {
+    if (!revisionId) {
+      return Promise.resolve<Revision | null>(null);
+    }
+    return request<Revision>(
       "/api/v1/documents/" +
         encodeURIComponent(documentId) +
         "/revisions/" +
         encodeURIComponent(revisionId),
-    ),
+    );
+  },
   revisions: (documentId: string, page = 1, size = 20) =>
     request<ApiPage<RevisionSummary>>(
       "/api/v1/documents/" +

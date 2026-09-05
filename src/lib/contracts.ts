@@ -116,7 +116,7 @@ export interface SyncState {
     document: Document | null;
     head: Revision | null;
     base: Revision | null;
-    devices: Device[];
+    devices: Device[] | null;
     revisions: ApiPage<RevisionSummary> | null;
     message: string | null;
     requestId: string | null;

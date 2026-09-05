@@ -30,7 +30,7 @@ export function Devices({
   onRename,
   onRevoke,
 }: {
-  devices: Device[];
+  devices: Device[] | null;
   currentDeviceId?: string;
   busy: string | null;
   onRename: (id: string, name: string) => Promise<void>;
@@ -47,10 +47,13 @@ export function Devices({
           撤销设备后，该设备的访问令牌会在服务端失效。
         </p>
       </div>
+      {devices && devices.length === 0 ? (
+        <p className="text-sm text-muted-foreground">当前账号下还没有授权设备。</p>
+      ) : null}
       <div className="grid gap-4">
-        {devices.map((device) => (
+        {(devices ?? []).map((device, index) => (
           <DeviceCard
-            key={device.id}
+            key={(device.id || "") + ":" + index}
             device={device}
             current={device.id === currentDeviceId}
             busy={busy}
