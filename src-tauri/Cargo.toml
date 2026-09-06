@@ -27,6 +27,9 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 sha2 = "0.10"
 notify = "8"
 uuid = { version = "1", features = ["v4", "fast-rng", "serde"] }
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+dirs = "5"
+thiserror = "1"
 
 [target.'cfg(windows)'.dependencies]
 tauri-plugin-single-instance = "2"

@@ -23,6 +23,26 @@ import {
   invokeNative,
   type NativeApiUploadPart,
 } from "@/lib/tauri";
+
+// ============== Skill Distribution (组织 → team/member) ==============
+
+export interface SkillDistribution {
+  id: string;
+  skillId: string;
+  organizationId: string;
+  scopeType: "ORGANIZATION" | "TEAM" | "MEMBER";
+  teamId: string | null;
+  memberId: string | null;
+  distributedByMemberId: string;
+  withdrawn: boolean;
+}
+
+export interface DistributeSkillRequestBody {
+  skillId: string;
+  scopeType: "ORGANIZATION" | "TEAM" | "MEMBER";
+  teamId?: string;
+  memberId?: string;
+}
 import { DOCUMENT_FORMAT_CONFIGS } from "@/lib/document-formats";
 import {
   clearSession,
@@ -597,6 +617,29 @@ export const api = {
           message,
         },
       },
+    ),
+
+  // ============== Skill Distribution (组织) ==============
+
+  listSkillDistributions: (organizationId: string) =>
+    request<SkillDistribution[]>(
+      "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/skill-distributions"
+    ),
+  distributeSkill: (
+    organizationId: string,
+    body: DistributeSkillRequestBody
+  ) =>
+    request<SkillDistribution>(
+      "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/skill-distributions",
+      { method: "POST", body }
+    ),
+  withdrawSkillDistribution: (organizationId: string, distributionId: string) =>
+    request<void>(
+      "/api/v1/organizations/" +
+        encodeURIComponent(organizationId) +
+        "/skill-distributions/" +
+        encodeURIComponent(distributionId),
+      { method: "DELETE" }
     ),
 
   // ============== Skill ==============

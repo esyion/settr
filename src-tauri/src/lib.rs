@@ -1,4 +1,8 @@
 mod commands;
+pub mod application;
+pub mod dto;
+pub mod shared;
+pub mod state;
 mod domain;
 mod hash;
 mod infrastructure;
@@ -59,6 +63,7 @@ pub fn run() {
             let watcher = infrastructure::local_watcher::LocalFileWatcher::start(app.handle())
                 .map_err(std::io::Error::other)?;
             app.manage(watcher);
+            app.manage(state::AppState::default());
             infrastructure::tray::setup_tray(app.handle()).map_err(std::io::Error::other)?;
             infrastructure::tray::setup_close_to_tray(app.handle())
                 .map_err(std::io::Error::other)?;
@@ -73,7 +78,14 @@ pub fn run() {
             commands::local::save_local_manifest,
             commands::local::apply_remote_document,
             commands::network::api_request,
-            commands::network::api_upload
+            commands::network::api_upload,
+            commands::skill::list_skills,
+            commands::skill::install_skill,
+            commands::skill::enable_skill_harness,
+            commands::skill::disable_skill_harness,
+            commands::skill::resync_skill_harness,
+            commands::skill::scan_local_harnesses,
+            commands::skill::read_local_skill_state
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

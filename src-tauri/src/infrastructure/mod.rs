@@ -1,4 +1,11 @@
 pub mod api;
+pub mod skill_session;
+pub mod skill_state;
+pub mod skill_paths;
+pub mod skill_installer;
+pub mod skill_extractor;
+pub mod skill_dispatcher;
+pub mod skill_api;
 pub mod atomic_file;
 pub mod local_file;
 pub mod local_paths;
