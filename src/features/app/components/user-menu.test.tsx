@@ -103,4 +103,29 @@ describe("UserMenu", () => {
       .closest('[role="menuitem"]');
     expect(logoutItem).toHaveAttribute("aria-disabled", "true");
   });
+
+  it("hides text block and chevron when sidebar is collapsed", () => {
+    render(
+      <SidebarProvider defaultOpen={false}>
+        <UserMenu
+          user={{ email: "qingbo.my@gmail.com", name: null, avatar: null }}
+          identity={identity}
+          onLogout={vi.fn()}
+          busy={false}
+        />
+      </SidebarProvider>,
+    );
+    const subtitle = screen.getByText("QING");
+    const textContainer = subtitle.parentElement;
+    expect(textContainer?.className).toContain(
+      "group-data-[collapsible=icon]:hidden",
+    );
+    const chevron = screen
+      .getByText("qingbo.my")
+      .closest("button")
+      ?.querySelector("svg.lucide-chevrons-up-down");
+    expect(chevron?.getAttribute("class")).toContain(
+      "group-data-[collapsible=icon]:hidden",
+    );
+  });
 });
