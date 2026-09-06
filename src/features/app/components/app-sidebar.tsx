@@ -3,10 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Building2,
   Cloud,
   FileClock,
+  FolderTree,
   Laptop,
+  ScrollText,
   Settings as SettingsIcon,
+  ShieldCheck,
+  UserPlus,
   Users,
 } from "lucide-react";
 import {
@@ -23,23 +28,34 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { ContextSwitcher } from "@/features/context/components/context-switcher";
+import { useWorkspaceContextValue } from "@/features/context/workspace-context";
 import { getDocumentFormatConfig } from "@/lib/document-formats";
 import type { DeviceIdentity, DocumentFormat } from "@/lib/contracts";
 
-/** 侧边栏导航项定义：路径、图标、显示名。 */
-const NAV_ITEMS = [
+/** 个人空间导航项：概览 / 版本 / 设备 / 设置。 */
+const PERSONAL_ITEMS = [
   { href: "/overview", label: "概览", icon: Cloud },
   { href: "/versions", label: "版本历史", icon: FileClock },
   { href: "/devices", label: "设备", icon: Users },
-  { href: "/organization", label: "组织", icon: Users },
   { href: "/settings", label: "设置", icon: SettingsIcon },
 ] as const;
 
+/** 组织空间导航项：组织概览 / 团队 / 成员 / 规范 / 角色。 */
+const ORGANIZATION_ITEMS = [
+  { href: "/organization", label: "组织概览", icon: Building2 },
+  { href: "/organization/teams", label: "团队与项目", icon: FolderTree },
+  { href: "/organization/memberships", label: "成员", icon: UserPlus },
+  { href: "/organization/policies", label: "规范", icon: ScrollText },
+  { href: "/organization/roles", label: "角色", icon: ShieldCheck },
+] as const;
+
 /**
- * 主应用侧边栏：基于 shadcn Sidebar 组件，使用 next/link 接入文件路由。
- * <p>
- * 当前路由高亮由 usePathname 推导，不再依赖组件内部 state。
- * 侧边栏底部展示当前设备信息和当前文档格式，方便用户随时确认上下文。
+ * 主应用侧边栏：上下文感知。
+ * <ul>
+ *   <li>个人空间（scope === "personal"）：概览 / 版本 / 设备 / 设置 + 组织 section</li>
+ *   <li>组织空间（scope === "organization"）：组织概览 / 团队 / 成员 / 规范 / 角色</li>
+ * </ul>
+ * 当前路由高亮由 usePathname 推导。
  */
 export function AppSidebar({
   identity,
@@ -49,7 +65,9 @@ export function AppSidebar({
   format: DocumentFormat;
 }) {
   const pathname = usePathname();
+  const ctx = useWorkspaceContextValue();
   const config = getDocumentFormatConfig(format);
+  const isOrg = ctx.scope === "organization";
 
   return (
     <Sidebar collapsible="icon">
@@ -70,33 +88,87 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>工作区</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const active =
-                  pathname === item.href ||
-                  pathname.startsWith(item.href + "/");
-                return (
-                  <SidebarMenuItem key={item.href}>
+        {isOrg ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>组织空间</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {ORGANIZATION_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const active =
+                    pathname === item.href ||
+                    pathname.startsWith(item.href + "/");
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.label}
+                      >
+                        <Link href={item.href}>
+                          <Icon />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel>工作区</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {PERSONAL_ITEMS.map((item) => {
+                    const Icon = item.icon;
+                    const active =
+                      pathname === item.href ||
+                      pathname.startsWith(item.href + "/");
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          tooltip={item.label}
+                        >
+                          <Link href={item.href}>
+                            <Icon />
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            <SidebarGroup>
+              <SidebarGroupLabel>组织</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
-                      isActive={active}
-                      tooltip={item.label}
+                      isActive={
+                        pathname === "/organization" ||
+                        pathname.startsWith("/organization/")
+                      }
+                      tooltip="组织"
                     >
-                      <Link href={item.href}>
-                        <Icon />
-                        <span>{item.label}</span>
+                      <Link href="/organization">
+                        <Building2 />
+                        <span>加入或创建组织</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
       <SidebarFooter>
         <div className="rounded-xl border bg-card p-3 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
