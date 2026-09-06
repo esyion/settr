@@ -1,13 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useWorkspaceContextValue } from "@/features/context/workspace-context";
 import { toast } from "sonner";
 
 /**
- * 组织空间根布局：无 ctx=organization 时 redirect 到 /overview，
- * 并 toast 提示用户。
+ * 组织空间根布局：
+ * <ul>
+ *   <li>`/organization` 本身（overview）：两种 scope 都可访问，
+ *       由 page.tsx 决定渲染「创建表单」还是「组织概览」；</li>
+ *   <li>`/organization/*` 子路由（teams/memberships/...）：
+ *       必须已选 ctx=organization，否则 redirect 到 /overview 并 toast。</li>
+ * </ul>
  */
 export default function OrganizationLayout({
   children,
@@ -16,17 +21,21 @@ export default function OrganizationLayout({
 }) {
   const ctx = useWorkspaceContextValue();
   const router = useRouter();
+  const pathname = usePathname();
 
+  // 子路由守卫：scope !== organization 且不在 /organization 根时 redirect
   useEffect(() => {
-    if (!ctx.loading && ctx.scope !== "organization") {
-      toast.error("请先选择一个组织", {
-        description: "侧边栏顶部可切换或创建组织",
+    const isRoot = pathname === "/organization";
+    if (!ctx.loading && !isRoot && ctx.scope !== "organization") {
+      toast.error("请先创建一个组织", {
+        description: "点击侧边栏的「组织」进入创建",
       });
-      router.replace("/overview");
+      router.replace("/organization");
     }
-  }, [ctx.loading, ctx.scope, router]);
+  }, [ctx.loading, ctx.scope, pathname, router]);
 
-  if (ctx.loading || ctx.scope !== "organization") {
+  // 加载中态
+  if (ctx.loading) {
     return (
       <div className="flex h-full items-center justify-center p-12">
         <p className="text-sm text-muted-foreground">正在加载组织上下文…</p>
