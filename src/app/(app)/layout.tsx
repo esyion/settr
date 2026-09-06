@@ -137,6 +137,17 @@ function AppLayoutShell({ children }: { children: React.ReactNode }) {
       <AppSidebar
         identity={controller.state.identity}
         format={controller.state.format}
+        user={
+          controller.state.user
+            ? {
+                email: controller.state.user.email,
+                name: null,
+                avatar: null,
+              }
+            : null
+        }
+        onLogout={() => void controller.logout()}
+        busy={controller.busy === "logout"}
       />
       <SidebarInset>
         <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
