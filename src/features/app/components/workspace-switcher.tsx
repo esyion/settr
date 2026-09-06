@@ -1,0 +1,117 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { Building2, ChevronsUpDown, Cloud, User } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { useWorkspaceContextValue } from "@/features/context/workspace-context";
+import { toast } from "sonner";
+
+/** AppSidebar 顶部的品牌 + scope 切换控件:对齐 shadcn TeamSwitcher。 */
+export function WorkspaceSwitcher() {
+  const ctx = useWorkspaceContextValue();
+  const router = useRouter();
+  const { isMobile } = useSidebar();
+
+  const isOrg = ctx.scope === "organization";
+  const title = isOrg
+    ? ctx.organizationName || "选择组织"
+    : "个人空间";
+  const subtitle = isOrg ? "团队空间" : "桌面 · 已同步";
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              disabled={ctx.loading}
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Cloud className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-medium">{title}</span>
+                <span className="truncate text-xs">{subtitle}</span>
+              </div>
+              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            align="start"
+            side={isMobile ? "bottom" : "right"}
+            sideOffset={4}
+          >
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              切换工作区
+            </DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => {
+                ctx.clearOrganization();
+                toast.success("已切换到个人空间");
+              }}
+              className="flex items-center gap-2"
+            >
+              <User className="size-4" />
+              <span>个人空间</span>
+              {!isOrg && (
+                <span className="ml-auto text-xs text-muted-foreground">
+                  当前
+                </span>
+              )}
+            </DropdownMenuItem>
+            {ctx.organizations.length > 0 ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  我的组织
+                </DropdownMenuLabel>
+                {ctx.organizations.map((org) => (
+                  <DropdownMenuItem
+                    key={org.id}
+                    onClick={() => {
+                      ctx.setOrganization(org.id);
+                      toast.success(`已切换到 ${org.name}`);
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Building2 className="size-4" />
+                    <span className="truncate">{org.name}</span>
+                    {ctx.organizationId === org.id && (
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        当前
+                      </span>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </>
+            ) : null}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => router.push("/organization")}
+              className="flex items-center gap-2"
+            >
+              <Building2 className="size-4" />
+              进入组织管理
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}
