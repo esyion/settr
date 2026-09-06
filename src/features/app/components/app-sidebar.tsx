@@ -6,6 +6,7 @@ import {
   Cloud,
   FileClock,
   FolderTree,
+  Package,
   ScrollText,
   Settings as SettingsIcon,
   ShieldCheck,
@@ -32,6 +33,7 @@ const PERSONAL_GROUPS: NavMainGroup[] = [
     items: [
       { href: "/overview", label: "概览", icon: Cloud },
       { href: "/versions", label: "版本历史", icon: FileClock },
+      { href: "/skills", label: "Skills", icon: Package },
       { href: "/devices", label: "设备", icon: Users },
       { href: "/settings", label: "设置", icon: SettingsIcon },
     ],

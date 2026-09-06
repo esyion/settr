@@ -72,7 +72,8 @@ pub fn run() {
             commands::local::get_local_snapshot,
             commands::local::save_local_manifest,
             commands::local::apply_remote_document,
-            commands::network::api_request
+            commands::network::api_request,
+            commands::network::api_upload
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

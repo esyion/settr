@@ -167,3 +167,59 @@ export interface Invitation {
   status: InvitationStatus;
   createdAt: string;
 }
+
+/** Skill 来源类型。 */
+export type SkillSourceType = "local" | "github" | "skills_sh" | "zip_upload";
+
+/** Skill 范围(当前 MVP 仅 personal,org 预留)。 */
+export type SkillScope = "personal" | "org";
+
+/** Skill 元数据(列表/详情共用)。 */
+export interface Skill {
+    id: string;
+    name: string;
+    displayName: string | null;
+    description: string | null;
+    sourceType: SkillSourceType;
+    sourceUrl: string | null;
+    sourceRef: string | null;
+    ownerScope: SkillScope;
+    ownerUserId: string | null;
+    orgId: string | null;
+    latestVersionId: string | null;
+    latestVersion: string | null;
+    contentHash: string;
+    hasUpdateAvailable: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** 创建 skill 请求体。 */
+export interface CreateSkillRequest {
+    name: string;
+    displayName?: string | null;
+    description?: string | null;
+    sourceType: SkillSourceType;
+    sourceUrl?: string | null;
+    sourceRef?: string | null;
+}
+
+/** 更新 skill 元数据请求体。 */
+export interface UpdateSkillRequest {
+    displayName?: string | null;
+    description?: string | null;
+}
+
+/** Skill 版本。 */
+export interface SkillVersion {
+    id: string;
+    skillId: string;
+    version: string;
+    sizeBytes: number;
+    contentHash: string;
+    changelog: string | null;
+    sourceMeta: Record<string, unknown> | null;
+    publishedBy: string;
+    publishedAt: string;
+    downloadUrl: string | null;
+}

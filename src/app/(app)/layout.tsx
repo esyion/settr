@@ -20,6 +20,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/features/app/components/app-sidebar";
 import { StatusBadge } from "@/components/status-badge";
+import { PendingUpdatesBadge } from "@/features/skills/components/pending-updates-badge";
 import {
   SyncControllerProvider,
   useSyncController,
@@ -31,6 +32,7 @@ import { WorkspaceContext } from "@/features/context/workspace-context";
 const PAGE_META: Record<string, string> = {
   "/overview": "概览",
   "/versions": "版本历史",
+  "/skills": "Skills",
   "/devices": "设备",
   "/organization": "组织",
   "/settings": "设置",
@@ -168,6 +170,7 @@ function AppLayoutShell({ children }: { children: React.ReactNode }) {
           </Breadcrumb>
           <div className="ml-auto flex items-center gap-3">
             <StatusBadge status={controller.state.status} />
+            <PendingUpdatesBadge />
             <span className="hidden max-w-56 truncate text-sm text-muted-foreground sm:inline">
               {controller.state.user?.email || "—"}
             </span>
