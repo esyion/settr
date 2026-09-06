@@ -38,6 +38,8 @@ pub enum ExtractError {
     FileTooLarge { name: String, size: u64, limit: u64 },
     #[error("ZIP 包含符号链接 target 超长: {name}")]
     SymlinkTooLong { name: String },
+    #[error("ZIP 顶层目录结构非法: {0}")]
+    InvalidStructure(String),
 }
 
 /// 解压结果。
@@ -49,9 +51,10 @@ pub struct ExtractResult {
     pub has_skill_md: bool,
 }
 
-/// 把 zip 字节流解压到 {@code ssot_skill_dir(home, name)}。
-/// <p>
-/// 解压策略:写到临时目录 + 原子 rename,失败回滚。
+/// 把 zip 字节流解压到 `ssot_skill_dir(home, name)`。
+///
+/// 解压策略:写到独立临时目录(不进 SSOT)→ 校验顶层恰好 1 个名为 name 的目录 →
+/// 校验 inner 含 SKILL.md → 原子 rename inner 到 SSOT target。失败回滚 tmp,SSOT 不动。
 pub fn extract_zip_to_ssot(
     home: &Path,
     name: &str,
@@ -61,16 +64,22 @@ pub fn extract_zip_to_ssot(
         return Err(ExtractError::InvalidName(name.to_string()));
     }
     let target = ssot_skill_dir(home, name);
-    // 临时目录:target.<nonce>.<pid>,在成功后 rename 到 target
-    let nonce = uuid::Uuid::new_v4().simple().to_string();
-    let tmp = target.with_extension(format!("tmp.{}.{}", std::process::id(), nonce));
-    if tmp.exists() {
-        let _ = std::fs::remove_dir_all(&tmp);
-    }
-    std::fs::create_dir_all(&tmp)?;
 
-    // 任何后续失败都需要回滚 tmp
-    let result = (|| -> Result<ExtractResult, ExtractError> {
+    // 临时目录:不进 SSOT 路径,避免 tmp/<name>/ 变成 SSOT 的多余嵌套
+    let nonce = uuid::Uuid::new_v4().simple().to_string();
+    let tmp_root = std::env::temp_dir().join(format!(
+        "agents-plus-extract-{}-{}-{}",
+        std::process::id(),
+        nonce,
+        name
+    ));
+    if tmp_root.exists() {
+        let _ = std::fs::remove_dir_all(&tmp_root);
+    }
+    std::fs::create_dir_all(&tmp_root)?;
+
+    // 解压到 tmp_root;失败回滚 tmp_root
+    let extract = (|| -> Result<ExtractMeta, ExtractError> {
         let mut archive = ZipArchive::new(std::io::Cursor::new(zip_bytes))?;
         if archive.len() > MAX_ENTRIES {
             return Err(ExtractError::TooManyEntries {
@@ -81,7 +90,6 @@ pub fn extract_zip_to_ssot(
 
         let mut total: u64 = 0;
         let mut entry_count: usize = 0;
-        let mut has_skill_md = false;
 
         for i in 0..archive.len() {
             let mut entry = archive.by_index(i)?;
@@ -92,30 +100,22 @@ pub fn extract_zip_to_ssot(
             if raw_name.contains("..") || raw_name.starts_with('/') || raw_name.starts_with("\\") {
                 return Err(ExtractError::UnsafePath(raw_name));
             }
-            // 控制字符(防 zip slip)
             if raw_name.chars().any(|c| (c as u32) < 0x20) {
                 return Err(ExtractError::UnsafePath(raw_name));
             }
 
-            // 处理 symlink 条目(JDK ZipEntry 无 unix mode,标准库不暴露;
-            // 简化:仅看 entry.symlink_target 是否 Some,若有则校验 target 长度)
+            // 目标路径:tmp_root + raw_name(保留服务端校验过的单层前缀)
+            let out_path = tmp_root.join(&raw_name);
 
-            // 目标路径
-            let rel = PathBuf::from(&raw_name);
-            let out_path = tmp.join(&rel);
-
-            // 二次防越界:resolved 必须以 tmp 为根
-            let canon_tmp = tmp.canonicalize().unwrap_or_else(|_| tmp.clone());
+            // 二次防越界:resolved 必须以 tmp_root 为根
+            let canon_root = tmp_root.canonicalize().unwrap_or_else(|_| tmp_root.clone());
             if let Ok(canon_out) = out_path.canonicalize() {
-                if !canon_out.starts_with(&canon_tmp) {
+                if !canon_out.starts_with(&canon_root) {
                     return Err(ExtractError::UnsafePath(raw_name));
                 }
-            } else {
-                // 文件还不存在(尚未创建),用父目录 + 自身重新拼一个等价"解析后"路径
-                if let Some(parent) = out_path.parent() {
-                    if !parent.starts_with(&tmp) {
-                        return Err(ExtractError::UnsafePath(raw_name));
-                    }
+            } else if let Some(parent) = out_path.parent() {
+                if !parent.starts_with(&tmp_root) {
+                    return Err(ExtractError::UnsafePath(raw_name));
                 }
             }
 
@@ -161,68 +161,161 @@ pub fn extract_zip_to_ssot(
             }
             ensure_dir(&out_path)?;
             let mut out_file = std::fs::File::create(&out_path)?;
-            let mut copied: u64 = 0;
-            // 限制解压字节
             let mut limited = entry.take(MAX_FILE_BYTES + 1);
             let n = std::io::copy(&mut limited, &mut out_file)?;
-            copied = n;
-            if copied > MAX_FILE_BYTES {
+            if n > MAX_FILE_BYTES {
                 return Err(ExtractError::FileTooLarge {
                     name: raw_name,
-                    size: copied,
+                    size: n,
                     limit: MAX_FILE_BYTES,
                 });
             }
-            total += copied;
+            total += n;
             if total > MAX_TOTAL_BYTES {
                 return Err(ExtractError::TotalBytesExceeded {
                     found: total,
                     limit: MAX_TOTAL_BYTES,
                 });
             }
-
-            // 顶层 SKILL.md 检测(去前导目录后 basename == SKILL.md)
-            let normalized = raw_name.replace('\\', "/");
-            let last = normalized.rsplit('/').next().unwrap_or("");
-            if last == "SKILL.md" && normalized.matches('/').count() <= 1 {
-                has_skill_md = true;
-            }
         }
 
-        if !has_skill_md {
-            return Err(ExtractError::MissingSkillMd);
-        }
-
-        Ok(ExtractResult {
-            target_dir: target.clone(),
-            entry_count,
-            total_bytes: total,
-            has_skill_md,
-        })
+        Ok(ExtractMeta { entry_count, total_bytes: total })
     })();
 
-    match result {
-        Ok(r) => {
-            // 原子 rename 替换旧目录
-            if target.exists() {
-                let _ = std::fs::remove_dir_all(&target);
+    match extract {
+        Ok(meta) => match locate_and_validate_inner(&tmp_root, name) {
+            Ok(inner) => {
+                if target.exists() {
+                    // 旧 SSOT 目录(如上次解压坏的)直接清掉
+                    let _ = std::fs::remove_dir_all(&target);
+                }
+                if let Err(rename_err) = std::fs::rename(&inner, &target) {
+                    // rename 失败(跨盘等)→ 退化为 copy + remove
+                    if let Err(copy_err) = copy_dir_recursive(&inner, &target) {
+                        let _ = std::fs::remove_dir_all(&tmp_root);
+                        return Err(ExtractError::InvalidStructure(format!(
+                            "rename inner -> SSOT 失败且 copy 兜底也失败: rename={}, copy={}",
+                            rename_err, copy_err
+                        )));
+                    }
+                    let _ = std::fs::remove_dir_all(&inner);
+                }
+                // tmp_root 现在应只剩空壳,清掉
+                let _ = std::fs::remove_dir_all(&tmp_root);
+
+                Ok(ExtractResult {
+                    target_dir: target,
+                    entry_count: meta.entry_count,
+                    total_bytes: meta.total_bytes,
+                    has_skill_md: true,
+                })
             }
-            std::fs::rename(&tmp, &target)?;
-            Ok(r)
-        }
+            Err(e) => {
+                let _ = std::fs::remove_dir_all(&tmp_root);
+                Err(e)
+            }
+        },
         Err(e) => {
-            let _ = std::fs::remove_dir_all(&tmp);
+            let _ = std::fs::remove_dir_all(&tmp_root);
             Err(e)
         }
     }
 }
 
+/// 在解压后的 tmp_root 下定位唯一顶层目录,且该目录必须名为 skill name,内含 SKILL.md。
+fn locate_and_validate_inner(
+    tmp_root: &Path,
+    expected_name: &str,
+) -> Result<PathBuf, ExtractError> {
+    let read = match std::fs::read_dir(tmp_root) {
+        Ok(r) => r,
+        Err(e) => {
+            return Err(ExtractError::InvalidStructure(format!("读取 tmp_root 失败: {e}")));
+        }
+    };
+
+    let mut top_dirs: Vec<PathBuf> = Vec::new();
+    let mut top_files: Vec<String> = Vec::new();
+    for entry in read.flatten() {
+        let p = entry.path();
+        let ft = match entry.file_type() {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        if ft.is_dir() {
+            top_dirs.push(p);
+        } else if ft.is_file() || ft.is_symlink() {
+            top_files.push(entry.file_name().to_string_lossy().to_string());
+        }
+    }
+
+    if !top_files.is_empty() {
+        return Err(ExtractError::InvalidStructure(format!(
+            "ZIP 顶层存在裸露文件:{:?};服务端应保证只有一个顶层目录",
+            top_files
+        )));
+    }
+    if top_dirs.len() != 1 {
+        return Err(ExtractError::InvalidStructure(format!(
+            "ZIP 顶层目录数必须为 1,实际为 {}",
+            top_dirs.len()
+        )));
+    }
+
+    let inner = top_dirs.into_iter().next().expect("len == 1 已校验");
+    let inner_name = inner.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    if inner_name != expected_name {
+        return Err(ExtractError::InvalidStructure(format!(
+            "ZIP inner 目录名 '{}' 与 skill name '{}' 不一致",
+            inner_name, expected_name
+        )));
+    }
+
+    let skill_md = inner.join("SKILL.md");
+    if !skill_md.is_file() {
+        return Err(ExtractError::MissingSkillMd);
+    }
+    Ok(inner)
+}
+
+struct ExtractMeta {
+    entry_count: usize,
+    total_bytes: u64,
+}
+
+fn copy_dir_recursive(src: &Path, dest: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dest)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dest_path = dest.join(entry.file_name());
+        let ft = entry.file_type()?;
+        if ft.is_dir() {
+            copy_dir_recursive(&src_path, &dest_path)?;
+        } else if ft.is_symlink() {
+            #[cfg(unix)]
+            {
+                let target = std::fs::read_link(&src_path)?;
+                std::os::unix::fs::symlink(&target, &dest_path)?;
+            }
+            #[cfg(windows)]
+            {
+                let target = std::fs::read_link(&src_path)?;
+                std::os::windows::fs::symlink_file(&target, &dest_path)?;
+            }
+        } else {
+            std::fs::copy(&src_path, &dest_path)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
 
     fn build_zip(entries: &[(&str, &[u8])]) -> Vec<u8> {
-        use std::io::Write;
         let mut out = Vec::new();
         {
             let cursor = std::io::Cursor::new(&mut out);
@@ -230,8 +323,12 @@ mod tests {
             let opts = zip::write::FileOptions::default()
                 .compression_method(zip::CompressionMethod::Stored);
             for (name, data) in entries {
-                zip.start_file(*name, opts).unwrap();
-                zip.write_all(data).unwrap();
+                if name.ends_with('/') {
+                    zip.add_directory(*name, opts).unwrap();
+                } else {
+                    zip.start_file(*name, opts).unwrap();
+                    zip.write_all(data).unwrap();
+                }
             }
             zip.finish().unwrap();
         }
@@ -248,6 +345,38 @@ mod tests {
         dir
     }
 
+    /// 关键回归:解压后 SSOT 不能套多余层级。
+    /// 旧实现会把 `<name>/SKILL.md` 写成 `~/.agents-plus/skills/<name>/<name>/SKILL.md`。
+    /// 新实现必须是 `~/.agents-plus/skills/<name>/SKILL.md`。
+    #[test]
+    fn extract_does_not_nest_inner_directory() {
+        let zip = build_zip(&[
+            ("alpha/", b""),
+            ("alpha/SKILL.md", b"---\nname: alpha\n---\n# alpha"),
+            ("alpha/assets/icon.svg", b"<svg/>"),
+            ("alpha/references/foo.md", b"foo"),
+        ]);
+        let home = tmp_home();
+        let r = extract_zip_to_ssot(&home, "alpha", &zip).unwrap();
+        let target = r.target_dir.clone();
+
+        // 顶层直接是 SKILL.md,而不是 alpha/alpha/SKILL.md
+        assert!(
+            target.join("SKILL.md").is_file(),
+            "SKILL.md 应在 SSOT 顶层,实际 target={}",
+            target.display()
+        );
+        assert!(
+            !target.join("alpha").exists(),
+            "不应再嵌套 alpha/alpha"
+        );
+        assert!(target.join("assets").join("icon.svg").is_file());
+        assert!(target.join("references").join("foo.md").is_file());
+
+        let _ = std::fs::remove_dir_all(&home);
+        let _ = std::fs::remove_dir_all(target);
+    }
+
     #[test]
     fn valid_zip_with_skill_md_passes() {
         let zip = build_zip(&[
@@ -259,18 +388,30 @@ mod tests {
         let r = extract_zip_to_ssot(&home, "alpha", &zip).unwrap();
         assert!(r.has_skill_md);
         assert!(r.target_dir.exists());
+        assert!(r.target_dir.join("SKILL.md").is_file());
         let _ = std::fs::remove_dir_all(&home);
+        let _ = std::fs::remove_dir_all(&r.target_dir);
     }
 
     #[test]
     fn missing_skill_md_fails() {
-        let zip = build_zip(&[
-            ("alpha/", b""),
-            ("alpha/README.md", b"# r"),
-        ]);
+        let zip = build_zip(&[("alpha/", b""), ("alpha/README.md", b"# r")]);
         let home = tmp_home();
         let err = extract_zip_to_ssot(&home, "alpha", &zip).unwrap_err();
-        assert!(matches!(err, ExtractError::MissingSkillMd));
+        // 服务端校验已保证 SKILL.md 必出现;若客户端解压后 inner 不含 SKILL.md,本步骤补抓
+        assert!(matches!(
+            err,
+            ExtractError::MissingSkillMd | ExtractError::InvalidStructure(_)
+        ));
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn inner_dir_name_must_match_skill_name() {
+        let zip = build_zip(&[("alpha/SKILL.md", b"# x")]);
+        let home = tmp_home();
+        let err = extract_zip_to_ssot(&home, "beta", &zip).unwrap_err();
+        assert!(matches!(err, ExtractError::InvalidStructure(_)));
         let _ = std::fs::remove_dir_all(&home);
     }
 
@@ -288,8 +429,32 @@ mod tests {
         let zip = build_zip(&[("alpha/../etc/passwd", b"x")]);
         let home = tmp_home();
         let err = extract_zip_to_ssot(&home, "alpha", &zip).unwrap_err();
-        // 顶层只有一个目录 + ../ 在子段 → UnsafePath
         assert!(matches!(err, ExtractError::UnsafePath(_)));
         let _ = std::fs::remove_dir_all(&home);
+    }
+
+    /// 旧 SSOT 即使嵌套,再次解压也能原地修复:本测试先手工造一个
+    /// `~/.agents-plus/skills/<name>/<name>/SKILL.md`,再跑解压,验证结果收敛为单层。
+    #[test]
+    fn re_extract_repairs_previous_double_nested_ssot() {
+        let home = tmp_home();
+        let target = ssot_skill_dir(&home, "alpha");
+        std::fs::create_dir_all(target.join("alpha")).unwrap();
+        std::fs::write(target.join("alpha").join("SKILL.md"), b"# old broken").unwrap();
+        assert!(target.join("alpha").join("SKILL.md").is_file());
+
+        let zip = build_zip(&[("alpha/SKILL.md", b"# fresh")]);
+        let r = extract_zip_to_ssot(&home, "alpha", &zip).unwrap();
+        assert_eq!(r.target_dir, target);
+        assert!(target.join("SKILL.md").is_file());
+        assert!(
+            !target.join("alpha").exists(),
+            "旧嵌套 inner 必须被替换"
+        );
+        let content = std::fs::read_to_string(target.join("SKILL.md")).unwrap();
+        assert_eq!(content, "# fresh");
+
+        let _ = std::fs::remove_dir_all(&home);
+        let _ = std::fs::remove_dir_all(&r.target_dir);
     }
 }

@@ -154,7 +154,7 @@ export interface RoleAssignment { id: string; userId: string; roleId: string; or
 
 export interface Role { id: string; roleCode: string; roleName: string; description: string | null; scope: string; }
 
-export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "REVOKED";
+export type InvitationStatus = "PENDING" | "ACCEPTED" | "REVOKED";
 
 export interface Invitation {
   id: string;

@@ -6,7 +6,7 @@
 //! 序列化用 serde(rename_all = "camelCase") 保证字段命名风格一致。
 
 use crate::infrastructure::skill_api::SkillSummary;
-use crate::infrastructure::skill_installer::InstallResult;
+use crate::infrastructure::skill_installer::{DispatchFailure, InstallResult};
 use serde::Serialize;
 
 /// 列表返回的 skill 概要(IPC DTO)。
@@ -47,6 +47,21 @@ pub struct InstallResultDto {
     pub entry_count: usize,
     pub total_bytes: u64,
     pub synced_harnesses: Vec<String>,
+    /// dispatch 失败的 harness 列表(空 = 全部成功);前端可弹 toast。
+    pub failed_harnesses: Vec<DispatchFailureDto>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DispatchFailureDto {
+    pub harness: String,
+    pub error: String,
+}
+
+impl From<DispatchFailure> for DispatchFailureDto {
+    fn from(f: DispatchFailure) -> Self {
+        Self { harness: f.harness, error: f.error }
+    }
 }
 
 impl From<InstallResult> for InstallResultDto {
@@ -59,6 +74,7 @@ impl From<InstallResult> for InstallResultDto {
             entry_count: r.entry_count,
             total_bytes: r.total_bytes,
             synced_harnesses: r.synced_harnesses,
+            failed_harnesses: r.failed_harnesses.into_iter().map(Into::into).collect(),
         }
     }
 }
