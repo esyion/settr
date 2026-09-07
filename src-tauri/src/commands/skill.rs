@@ -22,7 +22,14 @@ use tauri::State;
 /// 从 AppState 取出 base_url(只取这一项),token 走 keyring(由 SkillContext 内部处理)。
 fn extract_context(state: &State<'_, crate::state::AppState>) -> Result<SkillContext, SkillError> {
     let st = state.inner();
-    SkillContext::from_global(&st.api_base_url)
+    // 从用户设置的内存视图读取后端地址;锁仅覆盖克隆,无 I/O。
+    let api_base_url = st
+        .settings
+        .read()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .api_base_url
+        .clone();
+    SkillContext::from_global(&api_base_url)
 }
 
 /// 解析 harness 字符串为 HarnessId;非法值返回 SkillError::InvalidHarness(IPC 稳定错误码)。

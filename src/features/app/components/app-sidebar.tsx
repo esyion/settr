@@ -23,7 +23,7 @@ import {
 import { NavMain, type NavMainGroup } from "@/features/app/components/nav-main";
 import { UserMenu, type UserMenuUser } from "@/features/app/components/user-menu";
 import { WorkspaceSwitcher } from "@/features/app/components/workspace-switcher";
-import { useWorkspaceContextValue } from "@/features/context/workspace-context";
+import { useWorkspaceStore } from "@/features/context/store";
 import type { DeviceIdentity, DocumentFormat } from "@/lib/contracts";
 
 /** 个人空间下的导航组:工作区(概览/版本/设备/设置)+ 组织(加入或创建)。 */
@@ -60,7 +60,7 @@ const ORGANIZATION_GROUPS: NavMainGroup[] = [
 
 /**
  * 主应用侧边栏的组合层:Header = WorkspaceSwitcher,Content = NavMain,Footer = UserMenu。
- * 全部数据由 props 注入,自身只读 usePathname 和 useWorkspaceContextValue 用于路由高亮和分组切换。
+ * 全部数据由 props 注入,自身只读 usePathname 和 useWorkspaceStore 用于路由高亮和分组切换。
  *
  * `format` 通过 destructure rename 在本地绑定为 `_format`,表达"故意不使用",
  * 外部 prop 名仍为 `format`,调用方(layout / 测试)无需修改。
@@ -80,8 +80,8 @@ export function AppSidebar({
   busy: boolean;
 }) {
   const pathname = usePathname();
-  const ctx = useWorkspaceContextValue();
-  const isOrg = ctx.scope === "organization";
+  const scope = useWorkspaceStore((s) => s.scope);
+  const isOrg = scope === "organization";
 
   return (
     <Sidebar collapsible="icon">

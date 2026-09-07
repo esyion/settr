@@ -59,8 +59,12 @@ fn show_main_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     Ok(())
 }
 
-/// Changes the main window close action to hide the window into the system tray.
+/// Changes the main window close action according to the user setting.
+/// <p>
+/// 每次关闭事件实时读取设置(锁仅覆盖布尔克隆):开启"关闭到托盘"时
+/// 阻止关闭并隐藏窗口;关闭该选项时直接放行默认关闭行为,设置修改即时生效。
 pub fn setup_close_to_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    let app_handle = app.clone();
     let window = app
         .get_webview_window(MAIN_WINDOW_LABEL)
         .ok_or_else(|| "未找到主窗口，无法注册关闭到托盘事件".to_string())?;
@@ -68,6 +72,16 @@ pub fn setup_close_to_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), String>
 
     window.on_window_event(move |event| {
         if let WindowEvent::CloseRequested { api, .. } = event {
+            let close_to_tray = app_handle
+                .state::<crate::state::AppState>()
+                .settings
+                .read()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .close_to_tray;
+            if !close_to_tray {
+                // 用户选择关闭即退出:不拦截默认行为。
+                return;
+            }
             api.prevent_close();
             if let Err(error) = window_to_hide.hide() {
                 log::error!("隐藏主窗口失败: {error}");

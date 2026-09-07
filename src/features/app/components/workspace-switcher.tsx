@@ -16,12 +16,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useWorkspaceContextValue } from "@/features/context/workspace-context";
+import { useWorkspaceStore } from "@/features/context/store";
 import { toast } from "sonner";
 
 /** AppSidebar 顶部的品牌 + scope 切换控件:对齐 shadcn TeamSwitcher。 */
 export function WorkspaceSwitcher() {
-  const ctx = useWorkspaceContextValue();
+  const ctx = useWorkspaceStore();
   const router = useRouter();
   const { isMobile } = useSidebar();
 

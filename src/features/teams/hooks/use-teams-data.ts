@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiClientError, api } from "@/lib/api-client";
 import { useWorkspaceStore } from "@/features/context/store";
-import { useWorkspaceContextValue } from "@/features/context/workspace-context";
 import { toast } from "sonner";
 import { teamsApi } from "@/features/teams/api";
 import type { Project, Team } from "@/lib/contracts";
@@ -21,7 +20,7 @@ function readableError(error: unknown, fallback: string): string {
  */
 export function useTeamsData(): TeamsDataApi {
   const organizationId = useWorkspaceStore((s) => s.organizationId);
-  const ctx = useWorkspaceContextValue();
+  const organizations = useWorkspaceStore((s) => s.organizations);
   const [teams, setTeams] = useState<Team[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [teamId, setTeamId] = useState("");
@@ -247,7 +246,7 @@ export function useTeamsData(): TeamsDataApi {
   );
 
   return {
-    organizations: ctx.organizations,
+    organizations,
     teams,
     projects,
     organizationId: organizationId ?? "",

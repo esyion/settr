@@ -21,6 +21,7 @@ import { toast } from "sonner";
  */
 export function CreateOrganizationForm() {
   const setOrganization = useWorkspaceStore((s) => s.setOrganization);
+  const refresh = useWorkspaceStore((s) => s.refresh);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -40,6 +41,8 @@ export function CreateOrganizationForm() {
             setBusy(true);
             try {
               const org = await api.createOrganization(trimmed);
+              // 新组织不在已缓存列表中时 setOrganization 会 no-op，必须先 refresh 再切换。
+              await refresh();
               setOrganization(org.id);
               toast.success(`已创建组织 ${org.name}`);
               setName("");

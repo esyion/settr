@@ -1,5 +1,5 @@
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
-use reqwest::{Client, Method, Url};
+use reqwest::{Client, Method};
 use serde::Serialize;
 use std::time::Duration;
 
@@ -25,14 +25,7 @@ pub async fn request(
     if !path.starts_with("/api/v1/") {
         return Err("只允许访问 Agents Plus API 路径".to_string());
     }
-    let base = base_url.trim_end_matches('/');
-    let parsed = Url::parse(base).map_err(|_| "后端地址格式不合法".to_string())?;
-    let host = parsed.host_str().unwrap_or_default();
-    let is_local_http =
-        parsed.scheme() == "http" && matches!(host, "localhost" | "127.0.0.1" | "::1");
-    if parsed.scheme() != "https" && !is_local_http {
-        return Err("生产环境后端地址必须使用 HTTPS；HTTP 仅允许本机 localhost 调试".to_string());
-    }
+    let base = crate::shared::url::validate_backend_base_url(&base_url)?;
     let url = format!("{base}{path}");
     let client = Client::builder()
         .connect_timeout(Duration::from_secs(10))
@@ -151,14 +144,7 @@ pub async fn upload_multipart(
     if !path.starts_with("/api/v1/") {
         return Err("只允许访问 Agents Plus API 路径".to_string());
     }
-    let base = base_url.trim_end_matches('/');
-    let parsed = Url::parse(base).map_err(|_| "后端地址格式不合法".to_string())?;
-    let host = parsed.host_str().unwrap_or_default();
-    let is_local_http =
-        parsed.scheme() == "http" && matches!(host, "localhost" | "127.0.0.1" | "::1");
-    if parsed.scheme() != "https" && !is_local_http {
-        return Err("生产环境后端地址必须使用 HTTPS;HTTP 仅允许本机 localhost 调试".to_string());
-    }
+    let base = crate::shared::url::validate_backend_base_url(&base_url)?;
     let url = format!("{base}{path}");
 
     let (body, boundary) = build_multipart_body(&parts);

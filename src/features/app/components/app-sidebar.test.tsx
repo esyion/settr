@@ -1,9 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AppSidebar } from "@/features/app/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { WorkspaceContext } from "@/features/context/workspace-context";
-import type { WorkspaceContextApi } from "@/features/context/hooks/use-workspace-context";
+import { useWorkspaceStore } from "@/features/context/store";
 import type { DeviceIdentity } from "@/lib/contracts";
 
 vi.mock("next/navigation", () => ({
@@ -24,36 +23,41 @@ const identity: DeviceIdentity = {
   appVersion: "0.1.0",
 };
 
-function renderWithContext(ctx: Partial<WorkspaceContextApi>) {
-  const fullCtx: WorkspaceContextApi = {
+/** 用例间隔离：先 reset 再按需覆写 store 状态（动作保持 store 原实现）。 */
+function renderSidebar(ctx: {
+  scope?: "personal" | "organization";
+  organizationId?: string | null;
+  organizationName?: string | null;
+}) {
+  useWorkspaceStore.getState().reset();
+  useWorkspaceStore.setState({
     scope: ctx.scope ?? "personal",
     organizationId: ctx.organizationId ?? null,
     organizationName: ctx.organizationName ?? null,
-    organizations: ctx.organizations ?? [],
-    loading: ctx.loading ?? false,
-    error: ctx.error ?? null,
-    setOrganization: ctx.setOrganization ?? vi.fn(),
-    clearOrganization: ctx.clearOrganization ?? vi.fn(),
-    refresh: ctx.refresh ?? vi.fn(),
-  };
+    organizations: [],
+    loading: false,
+    error: null,
+  });
   return render(
-    <WorkspaceContext.Provider value={fullCtx}>
-      <SidebarProvider>
-        <AppSidebar
-          identity={identity}
-          format="agentsMd"
-          user={{ email: "qingbo.my@gmail.com", name: null, avatar: null }}
-          onLogout={vi.fn()}
-          busy={false}
-        />
-      </SidebarProvider>
-    </WorkspaceContext.Provider>,
+    <SidebarProvider>
+      <AppSidebar
+        identity={identity}
+        format="agentsMd"
+        user={{ email: "qingbo.my@gmail.com", name: null, avatar: null }}
+        onLogout={vi.fn()}
+        busy={false}
+      />
+    </SidebarProvider>,
   );
 }
 
 describe("AppSidebar", () => {
+  beforeEach(() => {
+    useWorkspaceStore.getState().reset();
+  });
+
   it("renders WorkspaceSwitcher, NavMain and UserMenu when scope is personal", () => {
-    renderWithContext({ scope: "personal" });
+    renderSidebar({ scope: "personal" });
     expect(screen.getByTestId("workspace-switcher")).toBeInTheDocument();
     expect(screen.getByTestId("user-menu")).toBeInTheDocument();
     // 工作区 + 组织 两个 group label 都应可见
@@ -62,7 +66,7 @@ describe("AppSidebar", () => {
   });
 
   it("renders only 组织空间 group when scope is organization", () => {
-    renderWithContext({
+    renderSidebar({
       scope: "organization",
       organizationId: "org-1",
       organizationName: "Acme Inc",

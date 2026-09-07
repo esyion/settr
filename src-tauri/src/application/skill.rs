@@ -29,12 +29,11 @@ pub struct SkillContext {
 impl SkillContext {
     /// 从全局上下文(类似 AppState)构造;token 为空则返回 NotAuthenticated。
     /// <p>
-    /// token 不再由前端注入;改为从 OS keyring 拉(单一来源,避免 token 在前端/Tauri 两边不同步)。
-    /// base_url 优先使用入参;为空时回退到环境变量,再回退到 localhost 兜底。
+    /// token从 OS keyring 拉(单一来源,避免 token 在前端/Tauri 两边不同步)。
     pub fn from_global(base_url: &str) -> Result<Self, SkillError> {
         let access_token = crate::infrastructure::skill_session::read_access_token()?;
         let base_url = if base_url.is_empty() {
-            std::env::var("NEXT_PUBLIC_API_BASE_URL")
+            std::env::var("SERVER_BASE_URL")
                 .unwrap_or_else(|_| "http://localhost:19999".to_string())
         } else {
             base_url.to_string()

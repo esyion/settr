@@ -26,8 +26,7 @@ import {
   useSyncController,
 } from "@/features/sync/sync-controller-context";
 import { useSyncController as useSyncControllerInstance } from "@/features/sync/use-sync-controller";
-import { useWorkspaceContext } from "@/features/context/hooks/use-workspace-context";
-import { WorkspaceContext } from "@/features/context/workspace-context";
+import { useWorkspaceBootstrap } from "@/features/context/hooks/use-workspace-context";
 
 const PAGE_META: Record<string, string> = {
   "/overview": "概览",
@@ -51,13 +50,12 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const workspace = useWorkspaceContext();
+  // 首次进入应用时拉取组织列表写入 useWorkspaceStore；子组件直接读 store，无需 Provider。
+  useWorkspaceBootstrap();
   return (
-    <WorkspaceContext.Provider value={workspace}>
       <SyncControllerProvider value={useSyncControllerInstance()}>
         <AppLayoutShell>{children}</AppLayoutShell>
       </SyncControllerProvider>
-    </WorkspaceContext.Provider>
   );
 }
 

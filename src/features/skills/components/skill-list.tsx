@@ -24,6 +24,8 @@ import {
 } from "@/features/skills/api";
 import { HARNESS_LIST, HARNESS_META, type LocalState } from "@/features/skills/skill-harness";
 import { SkillRow, HarnessChip, readableError } from "@/features/skills/components/skill-row";
+import { useSkillStore } from "@/features/skills/store/skill-store";
+import { usePendingUpdates } from "@/features/skills/hooks/use-pending-updates";
 /**
  * Skill 列表(行/表格式,非卡片)。
  * 布局对齐 cc-switch:
@@ -33,9 +35,14 @@ import { SkillRow, HarnessChip, readableError } from "@/features/skills/componen
  */
 export function SkillList() {
   const router = useRouter();
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // 列表数据/请求态迁移到 useSkillStore：列表页、详情页、顶栏角标共享，返回列表不丢数据。
+  const skills = useSkillStore((s) => s.skillList);
+  const loading = useSkillStore((s) => s.listLoading);
+  const error = useSkillStore((s) => s.listError);
+  const setSkillList = useSkillStore((s) => s.setSkillList);
+  const setListLoading = useSkillStore((s) => s.setListLoading);
+  const setListError = useSkillStore((s) => s.setListError);
+  const { reload: reloadPendingUpdates } = usePendingUpdates();
   const [query, setQuery] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Skill | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -46,14 +53,14 @@ export function SkillList() {
   const [toggling, setToggling] = useState<Record<string, boolean>>({});
 
   const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setListLoading(true);
+    setListError(null);
     try {
       const result = await api.listSkills({
         q: query.trim() || undefined,
         size: 100,
       });
-      setSkills(result.records);
+      setSkillList(result.records);
       try {
         if (typeof window !== "undefined") {
           const snap = await readLocalSkillState();
@@ -63,11 +70,11 @@ export function SkillList() {
         setLocalState({});
       }
     } catch (err) {
-      setError(readableError(err));
+      setListError(readableError(err));
     } finally {
-      setLoading(false);
+      setListLoading(false);
     }
-  }, [query]);
+  }, [query, setSkillList, setListLoading, setListError]);
 
   // 进入页面时拉一次首屏数据;refresh 内部状态变更走 then() 链而非同步 setState。
   useEffect(() => {
@@ -87,6 +94,7 @@ export function SkillList() {
       toast.success("skill 已删除");
       setPendingDelete(null);
       void refresh();
+      void reloadPendingUpdates();
     } catch (err) {
       toast.error(readableError(err));
     } finally {

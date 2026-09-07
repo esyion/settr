@@ -3,8 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { WorkspaceSwitcher } from "@/features/app/components/workspace-switcher";
-import { WorkspaceContext } from "@/features/context/workspace-context";
-import type { WorkspaceContextApi } from "@/features/context/hooks/use-workspace-context";
+import { useWorkspaceStore } from "@/features/context/store";
 import type { Organization } from "@/lib/contracts";
 
 const push = vi.fn();
@@ -22,41 +21,50 @@ const organizations: Organization[] = [
   { id: "org-2", name: "Evil Corp", ownerUserId: "u-1" },
 ];
 
-function renderWithContext(
-  ctx: Partial<WorkspaceContextApi>,
+/** 用 store 直接种子状态；action 可用 spy 覆写以断言交互。 */
+function renderSwitcher(
+  ctx: {
+    scope?: "personal" | "organization";
+    organizationId?: string | null;
+    organizationName?: string | null;
+    organizations?: Organization[];
+    setOrganization?: (id: string) => void;
+    clearOrganization?: () => void;
+  },
   ui: React.ReactNode,
 ) {
-  const fullCtx: WorkspaceContextApi = {
+  useWorkspaceStore.getState().reset();
+  useWorkspaceStore.setState({
     scope: ctx.scope ?? "personal",
     organizationId: ctx.organizationId ?? null,
     organizationName: ctx.organizationName ?? null,
     organizations: ctx.organizations ?? [],
-    loading: ctx.loading ?? false,
-    error: ctx.error ?? null,
-    setOrganization: ctx.setOrganization ?? vi.fn(),
-    clearOrganization: ctx.clearOrganization ?? vi.fn(),
-    refresh: ctx.refresh ?? vi.fn(),
-  };
-  return render(
-    <WorkspaceContext.Provider value={fullCtx}>
-      <SidebarProvider>{ui}</SidebarProvider>
-    </WorkspaceContext.Provider>,
-  );
+    loading: false,
+    error: null,
+  });
+  if (ctx.setOrganization) {
+    useWorkspaceStore.setState({ setOrganization: ctx.setOrganization });
+  }
+  if (ctx.clearOrganization) {
+    useWorkspaceStore.setState({ clearOrganization: ctx.clearOrganization });
+  }
+  return render(<SidebarProvider>{ui}</SidebarProvider>);
 }
 
 describe("WorkspaceSwitcher", () => {
   beforeEach(() => {
     push.mockClear();
     toastSuccess.mockClear();
+    useWorkspaceStore.getState().reset();
   });
 
   it("shows '个人空间' when scope is personal", () => {
-    renderWithContext({ scope: "personal" }, <WorkspaceSwitcher />);
+    renderSwitcher({ scope: "personal" }, <WorkspaceSwitcher />);
     expect(screen.getByText("个人空间")).toBeInTheDocument();
   });
 
   it("shows the organization name when scope is organization", () => {
-    renderWithContext(
+    renderSwitcher(
       { scope: "organization", organizationId: "org-1", organizationName: "Acme Inc" },
       <WorkspaceSwitcher />,
     );
@@ -66,7 +74,7 @@ describe("WorkspaceSwitcher", () => {
   it("clicking an org item calls setOrganization and toasts", async () => {
     const user = userEvent.setup();
     const setOrganization = vi.fn();
-    renderWithContext(
+    renderSwitcher(
       { scope: "personal", organizations, setOrganization },
       <WorkspaceSwitcher />,
     );
@@ -79,7 +87,7 @@ describe("WorkspaceSwitcher", () => {
   it("clicking '个人空间' calls clearOrganization", async () => {
     const user = userEvent.setup();
     const clearOrganization = vi.fn();
-    renderWithContext(
+    renderSwitcher(
       { scope: "organization", organizationId: "org-1", organizationName: "Acme Inc", clearOrganization },
       <WorkspaceSwitcher />,
     );
@@ -90,7 +98,7 @@ describe("WorkspaceSwitcher", () => {
 
   it("clicking '进入组织管理' navigates to /organization", async () => {
     const user = userEvent.setup();
-    renderWithContext({ scope: "personal" }, <WorkspaceSwitcher />);
+    renderSwitcher({ scope: "personal" }, <WorkspaceSwitcher />);
     await user.click(screen.getByText("个人空间"));
     await user.click(screen.getByText("进入组织管理"));
     expect(push).toHaveBeenCalledWith("/organization");

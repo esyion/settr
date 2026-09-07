@@ -1,37 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Loader2, Sparkles } from "lucide-react";
-import { api, ApiClientError } from "@/lib/api-client";
-import type { Skill } from "@/lib/contracts";
+import { usePendingUpdates } from "@/features/skills/hooks/use-pending-updates";
 
 /**
  * 侧边栏 / 顶栏用的"有可用更新"角标。
- * 静默调用 /skills/pending-updates;不报错(失败时返回 0)。
+ * 数据来自 useSkillStore.pendingUpdates：挂载时拉取一次，
+ * skills 列表/详情页变更后由调用方触发 usePendingUpdates().reload() 同步刷新。
+ * 请求失败静默（失败时角标隐藏，不阻塞主流程）。
  */
 export function PendingUpdatesBadge() {
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const { pendingUpdates, pendingLoading, reload } = usePendingUpdates();
 
   useEffect(() => {
-    let cancel = false;
-    (async () => {
-      try {
-        const items: Skill[] = await api.listSkillPendingUpdates();
-        if (!cancel) setCount(items.length);
-      } catch (err) {
-        // 静默:角标不阻塞主流程
-        if (!(err instanceof ApiClientError)) {
-          console.warn("PendingUpdatesBadge refresh failed", err);
-        }
-      } finally {
-        if (!cancel) setLoading(false);
-      }
-    })();
-    return () => { cancel = true; };
-  }, []);
+    void reload();
+  }, [reload]);
 
-  if (loading) {
+  if (pendingLoading) {
     return (
       <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
         <Loader2 className="size-3 animate-spin" />
@@ -39,6 +25,7 @@ export function PendingUpdatesBadge() {
       </span>
     );
   }
+  const count = pendingUpdates.length;
   if (count === 0) return null;
   return (
     <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">

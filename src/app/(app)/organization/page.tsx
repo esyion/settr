@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { CreateOrganizationForm } from "@/features/teams/components/create-forms";
-import { useWorkspaceContextValue } from "@/features/context/workspace-context";
+import { useWorkspaceStore } from "@/features/context/store";
 
 /**
  * 组织空间根页面：双模式。
@@ -20,7 +20,7 @@ import { useWorkspaceContextValue } from "@/features/context/workspace-context";
  * </ul>
  */
 export default function OrganizationOverviewPage() {
-  const ctx = useWorkspaceContextValue();
+  const ctx = useWorkspaceStore();
 
   if (ctx.scope === "organization") {
     return (

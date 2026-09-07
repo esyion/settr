@@ -7,6 +7,11 @@
     "core:default",
     "opener:default",
     "deep-link:default",
-    "log:default"
+    "log:default",
+    "window-state:default",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
+    "updater:default"
   ]
 }

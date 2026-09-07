@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { useMembershipsData } from "@/features/memberships/hooks/use-memberships-data";
 import { useWorkspaceStore } from "@/features/context/store";
-import { WorkspaceContext } from "@/features/context/workspace-context";
 import { api } from "@/lib/api-client";
 
 vi.mock("@/lib/api-client", () => ({
@@ -13,26 +12,6 @@ vi.mock("@/lib/api-client", () => ({
   ApiClientError: class extends Error {},
 }));
 
-function wrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <WorkspaceContext.Provider
-      value={{
-        scope: "personal",
-        organizationId: null,
-        organizationName: null,
-        organizations: [],
-        loading: false,
-        error: null,
-        setOrganization: vi.fn(),
-        clearOrganization: vi.fn(),
-        refresh: vi.fn(),
-      }}
-    >
-      {children}
-    </WorkspaceContext.Provider>
-  );
-}
-
 describe("useMembershipsData", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -40,7 +19,7 @@ describe("useMembershipsData", () => {
   });
 
   it("returns empty memberships when no organizationId", async () => {
-    const { result } = renderHook(() => useMembershipsData(), { wrapper });
+    const { result } = renderHook(() => useMembershipsData());
     await waitFor(() => {
       expect(result.current.memberships).toEqual([]);
     });
@@ -55,7 +34,7 @@ describe("useMembershipsData", () => {
       { id: "org-1", name: "Org 1", ownerUserId: "u1" },
     ]);
     useWorkspaceStore.getState().setOrganization("org-1");
-    const { result } = renderHook(() => useMembershipsData(), { wrapper });
+    const { result } = renderHook(() => useMembershipsData());
     await waitFor(() => {
       expect(result.current.memberships.length).toBeGreaterThanOrEqual(0);
     });

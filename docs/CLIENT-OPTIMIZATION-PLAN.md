@@ -173,6 +173,8 @@
 - 签名私钥不出现在仓库与日志中。
 - 回滚方案：保留上一版本安装包可手动覆盖安装。
 
+**实施进度（2026-09-07）**：✅ 基础设施已就位——Cargo 依赖（tauri-plugin-updater 2.x）+ lib.rs 插件注册（Builder::new().build()，无 conf 时注册生效但不执行检查）+ capability updater:default + 前端包 @tauri-apps/plugin-updater 2.11.0。**密钥与配置延后**（2026-09-07 用户确认：密钥先不管，自动更新发布前再补）。剩余两步纯配置：① `pnpm tauri signer generate` 生成密钥对（需决策私钥保管方）② tauri.conf.json 填入 `plugins.updater.pubkey` + `endpoints` 并开启 `createUpdaterArtifacts`，CI 注入 TAURI_SIGNING_PRIVATE_KEY。完成后设置页可加"检查更新"入口。
+
 > 官方参考：<https://v2.tauri.app/plugin/updater/>
 
 ---
@@ -347,6 +349,22 @@
 - 每个设置项有明确默认值且跨重启保持。
 - 删除缓存/导出/删号有确认流程，操作结果有成功/失败反馈。
 
+**实施进度（2026-09-07）**：
+
+| 设置项 | 状态 | 说明 |
+|---|---|---|
+| 启动时检查 | ✅ 已接线 | AppSettings.startup_check（默认开），use-sync-controller 挂载刷新前判断；非桌面环境保持自动刷新 |
+| 自动上传本地修改 | ⏳ 依赖引擎 | 现有 upload 仅手动触发（use-sync-controller.ts:127），无自动上传路径；不放空壳开关，待 sync 引擎实现事件驱动上传后接入 |
+| 自动应用云端更新 | ⏳ 依赖引擎 | 现有 apply 仅手动触发（use-sync-controller.ts:152），同上 |
+| 冲突文件保留天数 | ⏳ 依赖引擎 | 无冲突文件清理逻辑，待实现后接入 |
+| 删除本地缓存 | ⏳ 待做 | 需定义缓存范围与确认流程 |
+| 导出个人数据 | ⏳ 依赖后端 | 需新增后端导出接口与 IPC 契约 |
+| 删除云端账号 | ⏳ 依赖后端 | 需新增后端接口与 IPC 契约 |
+| 后端地址 | ✅ 已接线 | 见问题 3 |
+| 外观（主题） | ✅ 已接线 | 见问题 8（next-themes 本地持久化） |
+| 自启动 | ✅ 已接线 | 见问题 9 |
+| 关闭到托盘 | ✅ 已接线 | 见问题 6 |
+
 ---
 
 ## 5. P2 — 安全加固与代码健康
@@ -366,12 +384,20 @@
 3. `style-src` 的 unsafe-inline 因 Tailwind 运行时注入通常需保留，单独评估。
 4. 若暂无法消除，记录已知妥协原因，纳入安全评审跟踪。
 
+**分析结论（2026-09-07，基于 out/ 静态导出产物实测）**：
+
+- `script-src 'unsafe-inline'`：**结构性必需，保留**。每个页面含 3 个内联 `<script>`（Next.js flight 数据 `self.__next_f.push`、hydration 引导、next-themes 主题防闪烁脚本），内容因页面而异，hash 白名单不可行，nonce 需服务端渲染支持（静态导出无服务端运行时）。与 Tauri 官方 Next.js 模板默认配置一致。
+- `style-src 'unsafe-inline'`：静态产物中内联 `<style>` 为 0（全部外链 2 个 stylesheet），但 sonner/diff-view 等第三方库存在运行时注入 `<style>` 的可能，收紧需逐页运行时验证后再执行，当前保留。
+- `connect-src` 维持 `ipc: http://ipc.localhost`：所有后端请求走 Rust reqwest（不经 WebView fetch），无需放行后端域名。
+
 **涉及文件**：`src-tauri/tauri.conf.json`
 
 **验收标准**：
 
 - CSP 配置与实际产物一致（无冗余放行）。
-- 如保留 unsafe-inline，有明确记录的原因说明。
+- 如保留 unsafe-inline，有明确记录的原因说明。✅（见上方分析结论）
+
+**状态**：✅ 已完成分析并记录；script-src 放行为结构性必需，style-src 收紧列入后续运行时验证项。
 
 ---
 
@@ -398,6 +424,8 @@
 - 新安装用户数据写入平台推荐目录。
 - 旧版本升级用户数据自动迁移，无丢失。
 - 迁移逻辑有单元测试覆盖（存在/不存在/部分迁移场景）。
+
+**实施决策（2026-09-07，用户拍板）**：✅ **选 A，维持 ~/.agents-plus 约定**。AGENTS.md §10 已修订为"本机数据存放于 ~/.agents-plus（主目录约定，与 cc-switch 生态对齐），设置文件使用 Tauri 平台配置目录；禁止硬编码绝对路径"。本项关闭。调研发现（skill_installer.rs:9 注释）：`~/.agents-plus` 作为 skill SSOT 是刻意设计——"整链路对齐 cc-switch services/skill.rs::install，只是把 SSOT 写在 ~/.agents-plus 下"；skill_paths.rs 的 skills/、cache/、skills-state.json 均基于该约定。盲目迁移会破坏 cc-switch 互操作预期；若仅迁移同步元数据（manifest/device.json）而 skill 留在原地，会造成数据分裂两处。**待决策**：① 维持 ~/.agents-plus 约定（修订 AGENTS.md §10 表述，认可类 Unix 数据目录约定）② 全量迁移到平台目录（放弃 cc-switch 路径对齐，或与 cc-switch 上游协调）。设置存储已用平台目录（app_config_dir），无迁移需求。
 
 ---
 

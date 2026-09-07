@@ -15,6 +15,7 @@ import { clearSession } from "@/lib/session-store";
 import { toast } from "sonner";
 import { isTauriRuntime } from "@/lib/tauri";
 import { useDeviceMaintenance } from "@/features/sync/use-device-maintenance";
+import { shouldRunStartupCheck } from "@/features/settings/api";
 import { useSyncStore } from "@/features/sync/store/sync-store";
 import { mergeDocuments } from "@/lib/merge";
 import { normalizeContentHash, sha256 } from "@/features/sync/hash";
@@ -64,7 +65,14 @@ export function useSyncController() {
     [setBusy, setNotice, setState],
   );
   useEffect(() => {
-    void refresh();
+    let cancelled = false;
+    void shouldRunStartupCheck().then((shouldRun) => {
+      // 用户关闭"启动时检查"时跳过自动刷新;取消后不再执行。
+      if (!cancelled && shouldRun) void refresh();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
   /** Applies a newly observed local snapshot to the synchronization store. */
   const onLocalSnapshot = useCallback(

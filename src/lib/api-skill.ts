@@ -2,7 +2,7 @@ import type { ApiPage, CreateSkillRequest, Skill, SkillVersion, UpdateSkillReque
 import { request } from "@/lib/api-request";
 import { nativeApiUpload, type NativeApiUploadPart } from "@/lib/tauri";
 import { loadSession } from "@/lib/session-store";
-import { ApiClientError, API_BASE_URL, parseEnvelope } from "@/lib/api-request";
+import { ApiClientError, getApiBaseUrl, parseEnvelope } from "@/lib/api-request";
 
 /** Skill 分发关系(组织 → team/member)。 */
 export interface SkillDistribution {
@@ -56,7 +56,7 @@ async function publishSkillVersionMultipart(
   };
   const zipPart = await fileToUploadPart(file, "zip", "application/zip");
   const response = await nativeApiUpload({
-    baseUrl: API_BASE_URL,
+    baseUrl: await getApiBaseUrl(),
     path: "/api/v1/skills/" + encodeURIComponent(skillId) + "/versions",
     parts: [zipPart, metaPart],
     accessToken: session.accessToken,
@@ -77,7 +77,7 @@ async function importSkillZipMultipart(file: File, name: string): Promise<Skill>
   };
   const zipPart = await fileToUploadPart(file, "zip", "application/zip");
   const response = await nativeApiUpload({
-    baseUrl: API_BASE_URL,
+    baseUrl: await getApiBaseUrl(),
     path: "/api/v1/skills/import/zip",
     parts: [zipPart, namePart],
     accessToken: session.accessToken,

@@ -37,6 +37,16 @@ pub fn run() {
             .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
             .build(),
     );
+    // 窗口状态记忆:自动保存/恢复位置、大小与最大化状态。
+    let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+    // 开机自启动:macOS 用 LaunchAgent;参数为空表示以默认方式启动。
+    // 自动更新:插件先行注册;updater endpoints/pubkey 在 tauri.conf.json 配置并
+    // 提供 TAURI_SIGNING_PRIVATE_KEY 后即启用(发布门槛 PRODUCT-BLUEPRINT §11)。
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    let builder = builder.plugin(tauri_plugin_autostart::init(
+        tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+        Some(vec![]),
+    ));
 
     #[cfg(target_os = "windows")]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -83,7 +93,15 @@ pub fn run() {
             let watcher = infrastructure::local_watcher::LocalFileWatcher::start(app.handle())
                 .map_err(std::io::Error::other)?;
             app.manage(watcher);
-            app.manage(state::AppState::default());
+            // 设置存储:使用平台推荐配置目录(Windows: %APPDATA%/com.msi.agents-plus)。
+            let config_dir = app
+                .path()
+                .app_config_dir()
+                .map_err(|error| std::io::Error::other(format!("无法解析配置目录: {error}")))?;
+            let settings_store = infrastructure::settings_store::SettingsStore::new(
+                config_dir.join("settings.json"),
+            );
+            app.manage(state::AppState::new(settings_store));
             infrastructure::tray::setup_tray(app.handle()).map_err(std::io::Error::other)?;
             infrastructure::tray::setup_close_to_tray(app.handle())
                 .map_err(std::io::Error::other)?;
@@ -98,6 +116,8 @@ pub fn run() {
             commands::local::save_local_manifest,
             commands::local::apply_remote_document,
             commands::network::api_request,
+            commands::settings::get_settings,
+            commands::settings::update_settings,
             commands::network::api_upload,
             commands::skill::list_skills,
             commands::skill::install_skill,

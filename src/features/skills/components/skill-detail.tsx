@@ -10,7 +10,9 @@ import { api } from "@/lib/api-client";
 import { DeleteSkillDialog } from "@/features/skills/components/delete-skill-dialog";
 import { PublishVersionDialog } from "@/features/skills/components/publish-version-dialog";
 import { readableError } from "@/features/skills/components/skill-row";
-import type { Skill, SkillVersion } from "@/lib/contracts";
+import { useSkillStore } from "@/features/skills/store/skill-store";
+import { usePendingUpdates } from "@/features/skills/hooks/use-pending-updates";
+import type { SkillVersion } from "@/lib/contracts";
 import { toast } from "sonner";
 
 
@@ -20,27 +22,33 @@ import { toast } from "sonner";
 export function SkillDetail({ id }: { id: string }) {
   const router = useRouter();
 
-  const [skill, setSkill] = useState<Skill | null>(null);
-  const [versions, setVersions] = useState<SkillVersion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // 详情数据/请求态迁移到 useSkillStore：与列表页、顶栏角标共享，跨页导航不丢数据。
+  const skill = useSkillStore((s) => s.currentSkill);
+  const versions = useSkillStore((s) => s.versionList);
+  const loading = useSkillStore((s) => s.versionLoading);
+  const error = useSkillStore((s) => s.versionError);
+  const setCurrentSkill = useSkillStore((s) => s.setCurrentSkill);
+  const setVersionList = useSkillStore((s) => s.setVersionList);
+  const setVersionLoading = useSkillStore((s) => s.setVersionLoading);
+  const setVersionError = useSkillStore((s) => s.setVersionError);
+  const { reload: reloadPendingUpdates } = usePendingUpdates();
   const [publishOpen, setPublishOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setVersionLoading(true);
+    setVersionError(null);
     try {
       const [s, vs] = await Promise.all([api.getSkill(id), api.listSkillVersions(id)]);
-      setSkill(s);
-      setVersions(vs);
+      setCurrentSkill(s);
+      setVersionList(vs);
     } catch (err) {
-      setError(readableError(err));
+      setVersionError(readableError(err));
     } finally {
-      setLoading(false);
+      setVersionLoading(false);
     }
-  }, [id]);
+  }, [id, setCurrentSkill, setVersionList, setVersionLoading, setVersionError]);
 
   // 进入页面时拉一次首屏;refresh 内部 setState 走 then() 链。
   useEffect(() => {
@@ -55,6 +63,7 @@ export function SkillDetail({ id }: { id: string }) {
       await api.deleteSkill(skill.id);
       toast.success("skill 已删除");
       setDeleteOpen(false);
+      void reloadPendingUpdates();
       router.push("/skills");
     } catch (err) {
       toast.error(readableError(err));
@@ -68,22 +77,24 @@ export function SkillDetail({ id }: { id: string }) {
       await api.triggerSkillCheckUpdate(id);
       toast.success("已触发上游检查");
       void refresh();
+      void reloadPendingUpdates();
     } catch (err) {
       toast.error(readableError(err));
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="animate-spin" /> 加载中…
-      </div>
-    );
-  }
+  // 防串页：URL 已切到另一个 skill 但旧详情仍在 store 时，按加载占位展示而不是旧数据。
   if (error) {
     return (
       <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
         {error}
+      </div>
+    );
+  }
+  if (loading || !skill || skill.id !== id) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="animate-spin" /> 加载中…
       </div>
     );
   }
@@ -164,6 +175,7 @@ export function SkillDetail({ id }: { id: string }) {
         onPublished={() => {
           setPublishOpen(false);
           void refresh();
+          void reloadPendingUpdates();
         }}
       />
     </div>
