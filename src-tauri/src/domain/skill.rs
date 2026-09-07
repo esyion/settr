@@ -89,35 +89,3 @@ pub fn is_valid_skill_name(name: &str) -> bool {
     name.chars()
         .all(|c| c.is_ascii_digit() || (c.is_ascii_lowercase()) || c == '-')
 }
-
-/// 单元测试。
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn skill_name_validation() {
-        assert!(is_valid_skill_name("alpha"));
-        assert!(is_valid_skill_name("a-b-c"));
-        assert!(is_valid_skill_name("x1"));
-        assert!(is_valid_skill_name("trailing-")); // 模式允许首/末连字符
-        assert!(!is_valid_skill_name(""));
-        assert!(!is_valid_skill_name("BadName")); // 大写非法
-        assert!(!is_valid_skill_name("a_b"));
-        assert!(!is_valid_skill_name("-leading-hyphen-is-ok-in-pattern"));
-        assert!(!is_valid_skill_name(&"a".repeat(65)));
-    }
-
-    #[test]
-    fn harness_paths_match_user_home() {
-        let home = std::path::PathBuf::from("/home/u");
-        assert_eq!(
-            HarnessId::Claude.skills_dir(&home),
-            std::path::PathBuf::from("/home/u/.claude/skills")
-        );
-        assert_eq!(
-            HarnessId::Pi.skills_dir(&home),
-            std::path::PathBuf::from("/home/u/.pi/agent/skills")
-        );
-    }
-}

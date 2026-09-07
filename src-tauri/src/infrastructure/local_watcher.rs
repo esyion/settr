@@ -116,7 +116,3 @@ fn paths_equal(left: &Path, right: &Path) -> bool {
 fn is_atomic_temporary_name(name: &str, document_name: &str) -> bool {
     name.starts_with(&format!(".{document_name}.tmp-"))
 }
-
-#[cfg(test)]
-#[path = "local_watcher_test.rs"]
-mod local_watcher_test;

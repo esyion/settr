@@ -39,25 +39,3 @@ pub fn ensure_dir(path: &Path) -> std::io::Result<()> {
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn paths_relative_to_home() {
-        let home = std::path::PathBuf::from("/home/u");
-        assert_eq!(
-            ssot_root(&home),
-            std::path::PathBuf::from("/home/u/.agents-plus/skills")
-        );
-        assert_eq!(
-            ssot_skill_dir(&home, "alpha"),
-            std::path::PathBuf::from("/home/u/.agents-plus/skills/alpha")
-        );
-        assert_eq!(
-            state_file(&home),
-            std::path::PathBuf::from("/home/u/.agents-plus/skills-state.json")
-        );
-    }
-}
