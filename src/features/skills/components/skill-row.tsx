@@ -6,7 +6,6 @@ import { Toggle } from "@/components/ui/toggle";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { HARNESS_LIST } from "@/features/skills/skill-harness";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { Skill } from "@/lib/contracts";
 import { HARNESS_META, type HarnessKey, type HarnessIcon } from "@/features/skills/skill-harness";
 import { ApiClientError } from "@/lib/api-client";

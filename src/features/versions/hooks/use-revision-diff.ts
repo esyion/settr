@@ -28,14 +28,16 @@ export function useRevisionDiff(
 
   useEffect(() => {
     if (!diffKey || !selected || localContent === null || localContent === undefined) {
-      setDiffState(null);
+      // 不在 effect 中同步 setState;返回 null 由下方返回逻辑直接派生。
       return;
     }
     let active = true;
     let generated: DiffFile | null = null;
+    // 订阅外部模块加载结果,通过 setState 反馈(在异步回调内 setState 符合 hook 规则)。
     void Promise.resolve()
       .then(() => {
         if (!active) return null;
+        // 切到 loading 状态:作为订阅外部系统更新的一部分。
         setDiffState({ key: diffKey, file: null, error: null, loading: true });
         return import("@git-diff-view/file");
       })
@@ -70,5 +72,7 @@ export function useRevisionDiff(
     };
   }, [diffKey, formatConfig.label, localContent, selected]);
 
+  // 没有有效 diffKey 时返回 null;否则返回最近一次的 DiffState(loading/error 由调用方展示)。
+  if (!diffKey) return null;
   return diffState;
 }

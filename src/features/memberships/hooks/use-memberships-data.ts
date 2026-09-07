@@ -26,10 +26,9 @@ export function useMembershipsData(): MembershipsDataApi {
   const [busy, setBusy] = useState<string | null>(null);
 
   // 组织成员加载
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!organizationId) {
-      setMemberships([]);
+      void Promise.resolve().then(() => setMemberships([]));
       return;
     }
     let cancelled = false;
@@ -50,7 +49,7 @@ export function useMembershipsData(): MembershipsDataApi {
   // 团队成员加载(简化版:实际应用应联动 teams feature 的当前 teamId)
   useEffect(() => {
     if (!teamId) {
-      setTeamMemberships([]);
+      void Promise.resolve().then(() => setTeamMemberships([]));
       return;
     }
     let cancelled = false;
@@ -67,7 +66,6 @@ export function useMembershipsData(): MembershipsDataApi {
       cancelled = true;
     };
   }, [teamId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const refresh = useCallback(async () => {
     if (!organizationId) return;

@@ -18,6 +18,8 @@ pub enum SkillError {
     NotAuthenticated,
     #[error("不支持的 harness: {0}")]
     InvalidHarness(String),
+    #[error("参数非法: {0}")]
+    InvalidInput(String),
     #[error("安装失败: {0}")]
     InstallFailed(String),
     #[error("内部错误: {0}")]
@@ -30,6 +32,7 @@ impl SkillError {
         match self {
             SkillError::NotAuthenticated => "NOT_AUTHENTICATED",
             SkillError::InvalidHarness(_) => "INVALID_HARNESS",
+            SkillError::InvalidInput(_) => "INVALID_INPUT",
             SkillError::InstallFailed(_) => "INSTALL_FAILED",
             SkillError::Internal(_) => "INTERNAL",
         }

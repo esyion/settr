@@ -16,11 +16,9 @@ const DiffView = dynamic(
 export function DiffViewer({
   diffState,
   diffKey,
-  formatLabel,
 }: {
   diffState: DiffState | null;
   diffKey: string | null;
-  formatLabel: string;
 }) {
   if (diffState?.key === diffKey && diffState.error) {
     return (

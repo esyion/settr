@@ -1,20 +1,3 @@
-import type {
-  EffectivePolicies,
-  Invitation,
-  Membership,
-  Organization,
-  PolicyDistribution,
-  PolicyDraft,
-  PolicyReviewRequest,
-  PolicyVersion,
-  Project,
-  Role,
-  RoleAssignment,
-  Team,
-  TeamMembership,
-  ApiPage,
-  RevisionSummary,
-} from "@/lib/contracts";
 import { request } from "@/lib/api-request";
 
 /** 组织、团队、项目、成员、邀请、策略、角色 API 方法(由 api-client 合入主 api 对象)。 */

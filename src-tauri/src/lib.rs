@@ -85,7 +85,8 @@ pub fn run() {
             commands::skill::disable_skill_harness,
             commands::skill::resync_skill_harness,
             commands::skill::scan_local_harnesses,
-            commands::skill::read_local_skill_state
+            commands::skill::read_local_skill_state,
+            commands::skill::publish_skill_version
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

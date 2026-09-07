@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { api, ApiClientError } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
+import { readableError } from "@/features/skills/components/skill-row";
+import { publishSkillVersion, fileToBytesAsync } from "@/features/skills/api";
 import type { Skill, SkillVersion } from "@/lib/contracts";
 import { toast } from "sonner";
 
@@ -42,14 +44,14 @@ export function SkillDetail({ id }: { id: string }) {
     }
   }, [id]);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // 进入页面时拉一次首屏;refresh 内部 setState 走 then() 链。
   useEffect(() => {
-    void refresh();
+    void Promise.resolve().then(() => refresh());
   }, [refresh]);
 
   const handleDelete = async () => {
     if (!skill) return;
-    if (!window.confirm(`确认删除 {skill.name}?此操作不可恢复。`)) return;
+    if (!window.confirm(`确认删除 "${skill.name}"?此操作不可恢复。`)) return;
     try {
       await api.deleteSkill(skill.id);
       toast.success("skill 已删除");
@@ -58,7 +60,6 @@ export function SkillDetail({ id }: { id: string }) {
       toast.error(readableError(err));
     }
   };
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleCheckUpdate = async () => {
     try {
@@ -205,33 +206,29 @@ function PublishVersionDialog({
     }
     setSubmitting(true);
     try {
-      // 通过 /versions multipart 端点
-// 直接走 fetch,api-client 包装只支持 JSON
-      const session = await (await import("@/lib/session-store")).loadSession();
-      if (!session) throw new ApiClientError("登录会话不存在", 40100, 401, null, null);
-      const form = new FormData();
-      form.append("zip", file);
-      form.append("meta", new Blob([JSON.stringify({ version, changelog: changelog || undefined })], { type: "application/json" }));
-      const res = await fetch(
-        (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:19999") +
-          "/api/v1/skills/" + encodeURIComponent(skillId) + "/versions",
-        {
-          method: "POST",
-          headers: { Authorization: "Bearer " + session.accessToken },
-          body: form,
-        }
-      );
-      if (!res.ok) {
-        const text = await res.text();
+      // 走 IPC gateway,后端统一负责鉴权、HTTPS 校验和 multipart 拼装(AGENTS.md §4.1 / §7)。
+      const zipBytes = await fileToBytesAsync(file);
+      const res = await publishSkillVersion({
+        skillId,
+        version,
+        changelog: changelog || undefined,
+        zipBytes,
+      });
+      if (res.status >= 400) {
         let msg = "上传失败";
-        try { msg = (JSON.parse(text) as { message?: string }).message || msg; } catch { /* ignore */ }
-        throw new ApiClientError(msg, res.status, res.status, null, null);
+        try {
+          const parsed = JSON.parse(res.body) as { message?: string };
+          msg = parsed.message || msg;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(msg);
       }
       toast.success("版本发布成功");
       setVersion(""); setChangelog(""); setFile(null);
       onPublished();
     } catch (err) {
-      toast.error(err instanceof ApiClientError ? err.message : "发布失败");
+      toast.error(err instanceof Error ? err.message : "发布失败");
     } finally {
       setSubmitting(false);
     }
@@ -294,8 +291,3 @@ function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function readableError(err: unknown): string {
-  if (err instanceof ApiClientError) return err.message;
-  if (err instanceof Error) return err.message;
-  return "未知错误";
-}

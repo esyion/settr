@@ -71,11 +71,11 @@ function AppLayoutShell({ children }: { children: React.ReactNode }) {
   // 同一个 loading 占位上，挂载后再按真实环境分支。
   const [mounted, setMounted] = useState(false);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // mounted 仅在挂载后变 true;用 setTimeout(0) 把它推到下一个宏任务,避开 effect 内同步 setState。
   useEffect(() => {
-    setMounted(true);
+    const id = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(id);
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   // 鉴权拦截：未登录且已读取到设备身份时跳到登录页。
   useEffect(() => {

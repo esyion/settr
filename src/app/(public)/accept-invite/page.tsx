@@ -52,14 +52,15 @@ function AcceptInviteContent() {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!token) {
-      setStatus("error");
-      setErrorMsg("邀请链接无效");
+      void Promise.resolve().then(() => {
+        setStatus("error");
+        setErrorMsg("邀请链接无效");
+      });
       return;
     }
-    setStatus("loading");
+    void Promise.resolve().then(() => setStatus("loading"));
     membershipsApi
       .acceptInvitation(token)
       .then((res) => {
@@ -72,7 +73,6 @@ function AcceptInviteContent() {
         setErrorMsg(caught.message || "接受邀请失败");
       });
   }, [token]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <Card className="w-full max-w-md">

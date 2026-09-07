@@ -1,9 +1,7 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useState } from "react";
 import {
-  AlertCircle,
   AlertTriangle,
   Copy,
   Download,
@@ -11,7 +9,6 @@ import {
   GitCompareArrows,
   RefreshCw,
 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,14 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -50,14 +39,6 @@ import { formatTime, shortHash } from "@/lib/format";
 import { useRevisionDiff } from "@/features/versions/hooks/use-revision-diff";
 import { DiffViewer, DiffUnavailable } from "@/features/versions/components/diff-viewer";
 
-const OPEN_SOURCE_UNIFIED_MODE = 4;
-const DiffView = dynamic(
-  () => import("@git-diff-view/react").then((module) => module.DiffView),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-[420px] w-full" />,
-  },
-);
 
 /** Formats a revision timestamp for display. */
 export function Versions({
@@ -212,7 +193,7 @@ export function Versions({
                       {localContent === null || localContent === undefined ? (
                         <DiffUnavailable displayPath={formatConfig.displayPath} />
                       ) : (
-                        <DiffViewer diffState={diffState} diffKey={diffKey} formatLabel={formatConfig.label} />
+                        <DiffViewer diffState={diffState} diffKey={diffKey} />
                       )}
                     </TabsContent>
                   </Tabs>

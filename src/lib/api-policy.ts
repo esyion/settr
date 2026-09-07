@@ -1,12 +1,3 @@
-import type {
-  PolicyDistribution,
-  PolicyDraft,
-  PolicyReviewRequest,
-  PolicyVersion,
-  Role,
-  RoleAssignment,
-  Invitation,
-} from "@/lib/contracts";
 import { request } from "@/lib/api-request";
 
 /** 策略、角色、邀请 API 方法(由 api-client 合入主 api 对象)。 */

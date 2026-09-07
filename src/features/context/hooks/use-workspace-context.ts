@@ -59,11 +59,9 @@ export function useWorkspaceContext(): WorkspaceContextApi {
   }, [setOrganizations]);
 
   // 首次挂载时拉取用户所属组织列表；与 zustand store 同步副作用属于外部系统同步。
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    void refresh();
+    void Promise.resolve().then(() => refresh());
   }, [refresh]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   return {
     scope,

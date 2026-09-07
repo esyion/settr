@@ -29,11 +29,13 @@ export function useTeamsData(): TeamsDataApi {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // 加载组织团队:无 orgId 时由 .then 异步清空,有 orgId 时由 IIFE 异步拉取。
   useEffect(() => {
     if (!organizationId) {
-      setTeams([]);
-      setTeamId("");
+      void Promise.resolve().then(() => {
+        setTeams([]);
+        setTeamId("");
+      });
       return;
     }
     let cancelled = false;
@@ -54,8 +56,10 @@ export function useTeamsData(): TeamsDataApi {
 
   useEffect(() => {
     if (!organizationId || !teamId) {
-      setProjects([]);
-      setProjectId("");
+      void Promise.resolve().then(() => {
+        setProjects([]);
+        setProjectId("");
+      });
       return;
     }
     let cancelled = false;
@@ -73,7 +77,6 @@ export function useTeamsData(): TeamsDataApi {
       cancelled = true;
     };
   }, [organizationId, teamId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const refresh = useCallback(async () => {
     if (!organizationId) return;

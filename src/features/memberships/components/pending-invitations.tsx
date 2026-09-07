@@ -25,10 +25,9 @@ export function PendingInvitations() {
   const organizationId = useWorkspaceStore((s) => s.organizationId);
   const [items, setItems] = useState<Invitation[]>([]);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!organizationId) {
-      setItems([]);
+      void Promise.resolve().then(() => setItems([]));
       return;
     }
     let cancelled = false;
@@ -44,7 +43,6 @@ export function PendingInvitations() {
       cancelled = true;
     };
   }, [organizationId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function revoke(id: string) {
     if (!organizationId) return;

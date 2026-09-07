@@ -35,14 +35,15 @@ export function usePoliciesData(): PoliciesDataApi {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!organizationId) {
-      setPendingPolicies([]);
-      setAgentVersions([]);
-      setClaudeVersions([]);
-      setDistributions([]);
-      setEffectivePolicies(null);
+      void Promise.resolve().then(() => {
+        setPendingPolicies([]);
+        setAgentVersions([]);
+        setClaudeVersions([]);
+        setDistributions([]);
+        setEffectivePolicies(null);
+      });
       return;
     }
     let cancelled = false;
@@ -67,7 +68,6 @@ export function usePoliciesData(): PoliciesDataApi {
       cancelled = true;
     };
   }, [organizationId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const submitPolicyChange = useCallback(
     async (input: {

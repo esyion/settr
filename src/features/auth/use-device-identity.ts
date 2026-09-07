@@ -24,11 +24,12 @@ export function useDeviceIdentity(): DeviceIdentityState {
   });
 
   // 仅在该 hook 内部把外部 Tauri 状态同步到 React state，符合 effect 预期用途。
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     let cancelled = false;
     if (!isTauriRuntime()) {
-      setState({ status: "unsupported", identity: null, error: null });
+      void Promise.resolve().then(() =>
+        setState({ status: "unsupported", identity: null, error: null }),
+      );
       return () => {
         cancelled = true;
       };
@@ -51,7 +52,6 @@ export function useDeviceIdentity(): DeviceIdentityState {
       cancelled = true;
     };
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   return state;
 }

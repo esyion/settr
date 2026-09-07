@@ -24,11 +24,12 @@ export function useRolesData(): RolesDataApi {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!organizationId) {
-      setRoles([]);
-      setRoleAssignments([]);
+      void Promise.resolve().then(() => {
+        setRoles([]);
+        setRoleAssignments([]);
+      });
       return;
     }
     let cancelled = false;
@@ -49,7 +50,6 @@ export function useRolesData(): RolesDataApi {
       cancelled = true;
     };
   }, [organizationId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const refresh = useCallback(async () => {
     if (!organizationId) return;

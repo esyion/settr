@@ -157,3 +157,70 @@ pub fn read_local_skill_state(
     uc.read_local_state()
         .map_err(|e| format!("[{}] {}", e.code(), e))
 }
+
+/// 发布 skill 新版本(ZIP + meta)到后端。
+/// <p>
+/// 走 {@code commands::network::api_upload} 走 multipart,与 {@code api_request} 共用路径白名单
+/// 与 HTTPS 校验。前端不直接调后端,统一经 IPC gateway。
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishSkillVersionArgs {
+    /// 后端 skill id(UUID)。
+    pub skill_id: String,
+    /// 版本号(由前端按 ^[A-Za-z0-9._-]{1,64}$ 预校验)。
+    pub version: String,
+    /// 可选变更说明。
+    pub changelog: Option<String>,
+    /// ZIP 原始字节(Rust 端不重新读文件,直接由前端注入)。
+    pub zip_bytes: Vec<u8>,
+}
+
+#[tauri::command]
+pub async fn publish_skill_version(
+    state: State<'_, crate::state::AppState>,
+    input: PublishSkillVersionArgs,
+) -> Result<crate::infrastructure::api::ApiHttpResponse, String> {
+    // 1. 接收 DTO(PublishSkillVersionArgs)。
+    // 2. 边界校验:参数合法性 + 鉴权(从 keyring 拉 token,空即视为未登录)。
+    if input.skill_id.trim().is_empty() {
+        return Err(format!(
+            "[{}] skill_id 不能为空",
+            SkillError::InvalidInput("skill_id".to_string()).code()
+        ));
+    }
+    if input.version.trim().is_empty() {
+        return Err(format!(
+            "[{}] version 不能为空",
+            SkillError::InvalidInput("version".to_string()).code()
+        ));
+    }
+    if input.zip_bytes.is_empty() {
+        return Err(format!(
+            "[{}] zip_bytes 不能为空",
+            SkillError::InvalidInput("zip_bytes".to_string()).code()
+        ));
+    }
+    // 3. 从 State 拉一次 context(含 base_url + access_token),后续复用避免再次访问 keyring。
+    let ctx = extract_context(&state).map_err(|e| format!("[{}] {}", e.code(), e))?;
+    if ctx.access_token.is_empty() {
+        return Err(format!(
+            "[{}] 未登录或 token 已过期",
+            SkillError::NotAuthenticated.code()
+        ));
+    }
+    let home = dirs::home_dir()
+        .ok_or_else(|| SkillError::Internal("无法解析 home 目录".to_string()))
+        .map_err(|e| format!("[{}] {}", e.code(), e))?;
+    // 4. 调用明确的应用用例 publish。
+    let uc = crate::application::skill::SkillUseCases::new(home, ctx)
+        .map_err(|e| format!("[{}] {}", e.code(), e))?;
+    uc.publish(
+        &input.skill_id,
+        &input.version,
+        input.changelog.as_deref(),
+        input.zip_bytes,
+    )
+    .await
+    // 5/6. 响应直接是 ApiHttpResponse(已是稳定 DTO);错误统一映射为 [CODE] 消息。
+    .map_err(|e| format!("[{}] {}", e.code(), e))
+}

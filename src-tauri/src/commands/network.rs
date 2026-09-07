@@ -1,5 +1,9 @@
 use crate::infrastructure::api;
 
+/// 通用后端 HTTP 入口:前端所有普通 JSON 请求都走这里。
+/// <p>
+/// 与 {@code api_upload} 走同一条路径白名单(/api/v1/*)与 HTTPS 校验,
+/// 不接收 multipart 负载;multipart 请用 {@link api_upload}。
 #[tauri::command]
 pub async fn api_request(
     base_url: String,

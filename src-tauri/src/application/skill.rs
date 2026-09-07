@@ -127,6 +127,49 @@ impl SkillUseCases {
             .collect()
     }
 
+    /// 发布 skill 新版本到后端(经 IPC multipart 上传)。
+    /// <p>
+    /// 与 {@code install}/"enable" 不同,这一步把 ZIP 与 meta 主动推到后端,
+    /// 不依赖 SSOT 也不做 dispatch,只负责 multipart 拼装与鉴权透传。
+    pub async fn publish(
+        &self,
+        skill_id: &str,
+        version: &str,
+        changelog: Option<&str>,
+        zip_bytes: Vec<u8>,
+    ) -> Result<crate::infrastructure::api::ApiHttpResponse, SkillError> {
+        let path = format!("/api/v1/skills/{}/versions", skill_id);
+        let meta_value = serde_json::json!({
+            "version": version,
+            "changelog": changelog,
+        });
+        let meta_bytes = serde_json::to_vec(&meta_value)
+            .map_err(|e| SkillError::Internal(format!("序列化 meta 失败: {e}")))?;
+        let parts = vec![
+            crate::infrastructure::api::MultipartPart {
+                name: "zip".to_string(),
+                filename: Some(format!("{}.zip", skill_id)),
+                content_type: Some("application/zip".to_string()),
+                data: zip_bytes,
+            },
+            crate::infrastructure::api::MultipartPart {
+                name: "meta".to_string(),
+                filename: None,
+                content_type: Some("application/json".to_string()),
+                data: meta_bytes,
+            },
+        ];
+        crate::infrastructure::api::upload_multipart(
+            self.api.base_url.clone(),
+            path,
+            parts,
+            Some(self.api.access_token.clone()),
+            uuid::Uuid::new_v4().to_string(),
+        )
+        .await
+        .map_err(SkillError::Internal)
+    }
+
     /// 取本地启用矩阵快照,供前端展示"哪些 skill 在哪些 harness 启用"。
     pub fn read_local_state(&self) -> Result<serde_json::Value, SkillError> {
         let snap = self.state.snapshot();

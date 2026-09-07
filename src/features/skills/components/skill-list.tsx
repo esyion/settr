@@ -2,45 +2,25 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Loader2,
-  Package,
-  Plus,
-  Search,
-  Trash2,
-  Upload,
-  Sparkles,
-  Pencil,
-} from "lucide-react";
-import {
-  Claude,
-  Codex,
-  Gemini,
-  Grok,
-  OpenCode,
-  HermesAgent,
-  Pi,
-} from "@lobehub/icons";
+import { Package, Plus, Search, Upload, Sparkles } from "lucide-react";
 
 // AGENTS.md §4.1 / §8:必须优先组合 shadcn/ui 组件
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Toggle } from "@/components/ui/toggle";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Card, CardContent } from "@/components/ui/card";
-import { api, ApiClientError } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import type { Skill } from "@/lib/contracts";
 import { toast } from "sonner";
 import { CreateSkillDialog } from "@/features/skills/components/create-skill-dialog";
 import { ImportSkillDialog } from "@/features/skills/components/import-skill-dialog";
 
 import type { HarnessKey } from "@/features/skills/skill-harness";
+import {
+  readLocalSkillState,
+  enableSkillHarness,
+  disableSkillHarness,
+} from "@/features/skills/api";
 import { HARNESS_LIST, HARNESS_META, type LocalState } from "@/features/skills/skill-harness";
 import { SkillRow, HarnessChip, readableError } from "@/features/skills/components/skill-row";
 /**
@@ -72,15 +52,9 @@ export function SkillList() {
       });
       setSkills(result.records);
       try {
-        if (
-          typeof window !== "undefined" &&
-          (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__
-        ) {
-          const { invoke } = await import("@tauri-apps/api/core");
-          const snap = (await invoke("read_local_skill_state")) as {
-            skills?: LocalState;
-          };
-          setLocalState(snap.skills ?? {});
+        if (typeof window !== "undefined") {
+          const snap = await readLocalSkillState();
+          setLocalState((snap.skills ?? {}) as LocalState);
         }
       } catch {
         setLocalState({});
@@ -92,11 +66,10 @@ export function SkillList() {
     }
   }, [query]);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // 进入页面时拉一次首屏数据;refresh 内部状态变更走 then() 链而非同步 setState。
   useEffect(() => {
-    void refresh();
+    void Promise.resolve().then(() => refresh());
   }, [refresh]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleDelete = async (skill: Skill) => {
     if (!window.confirm(`确认删除 "${skill.name}"?此操作不可恢复。`)) return;
@@ -123,22 +96,14 @@ export function SkillList() {
       return { ...prev, [skill.id]: { enabledHarnesses: Array.from(cur) } };
     });
     try {
-      if (
-        typeof window === "undefined" ||
-        !(window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__
-      ) {
+      if (typeof window === "undefined") {
         throw new Error("请在桌面客户端中切换 harness");
       }
-      const { invoke } = await import("@tauri-apps/api/core");
       if (enabled) {
-        await invoke("enable_skill_harness", { skillId: skill.id, harness });
+        await enableSkillHarness(skill.id, harness);
         toast.success(`已分发给 ${HARNESS_META[harness].label}`);
       } else {
-        await invoke("disable_skill_harness", {
-          skillId: skill.id,
-          skillName: skill.name,
-          harness,
-        });
+        await disableSkillHarness(skill.id, skill.name, harness);
         toast.success(`已从 ${HARNESS_META[harness].label} 移除`);
       }
     } catch (err) {
