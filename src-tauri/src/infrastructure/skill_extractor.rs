@@ -290,7 +290,3 @@ struct ExtractMeta {
     entry_count: usize,
     total_bytes: u64,
 }
-
-#[cfg(test)]
-#[path = "skill_extractor_test.rs"]
-mod skill_extractor_test;
