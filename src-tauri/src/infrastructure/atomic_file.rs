@@ -43,7 +43,11 @@ pub fn replace_file(source: &Path, destination: &Path) -> Result<(), String> {
     }
 }
 
-pub fn write_json_atomically(path: &Path, value: &impl Serialize) -> Result<(), String> {
+pub fn write_json_atomically<P: AsRef<Path>>(
+    path: P,
+    value: &impl Serialize,
+) -> Result<(), String> {
+    let path = path.as_ref();
     let parent = path.parent().ok_or_else(|| "本地路径无效".to_string())?;
     fs::create_dir_all(parent).map_err(|error| format!("无法创建本地目录: {error}"))?;
     let temp_path = parent.join(format!(
