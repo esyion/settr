@@ -14,6 +14,7 @@ import type { Skill } from "@/lib/contracts";
 import { toast } from "sonner";
 import { CreateSkillDialog } from "@/features/skills/components/create-skill-dialog";
 import { ImportSkillDialog } from "@/features/skills/components/import-skill-dialog";
+import { DeleteSkillDialog } from "@/features/skills/components/delete-skill-dialog";
 
 import type { HarnessKey } from "@/features/skills/skill-harness";
 import {
@@ -36,6 +37,8 @@ export function SkillList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<Skill | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [localState, setLocalState] = useState<LocalState>({});
@@ -68,17 +71,26 @@ export function SkillList() {
 
   // 进入页面时拉一次首屏数据;refresh 内部状态变更走 then() 链而非同步 setState。
   useEffect(() => {
-    void Promise.resolve().then(() => refresh());
+    // 输入防抖 300ms,避免逐字符触发全量请求与列表闪烁。
+    const timer = setTimeout(() => {
+      void Promise.resolve().then(() => refresh());
+    }, 300);
+    return () => clearTimeout(timer);
   }, [refresh]);
 
-  const handleDelete = async (skill: Skill) => {
-    if (!window.confirm(`确认删除 "${skill.name}"?此操作不可恢复。`)) return;
+  /** 确认对话框点击删除后执行,成功后刷新列表。 */
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
     try {
-      await api.deleteSkill(skill.id);
+      await api.deleteSkill(pendingDelete.id);
       toast.success("skill 已删除");
+      setPendingDelete(null);
       void refresh();
     } catch (err) {
       toast.error(readableError(err));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -244,13 +256,22 @@ export function SkillList() {
                   void handleToggleHarness(skill, h, e)
                 }
                 onOpen={() => router.push(`/skills?id=${skill.id}`)}
-                onDelete={() => void handleDelete(skill)}
+                onDelete={() => setPendingDelete(skill)}
               />
             ))}
           </ul>
         </Card>
       )}
 
+      <DeleteSkillDialog
+        skillName={pendingDelete?.displayName || pendingDelete?.name || ""}
+        open={pendingDelete !== null}
+        busy={deleting}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        onConfirm={() => void handleDelete()}
+      />
       <CreateSkillDialog
         open={createOpen}
         onOpenChange={setCreateOpen}

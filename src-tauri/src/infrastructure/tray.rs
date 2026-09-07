@@ -25,7 +25,7 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "show" => {
                 if let Err(error) = show_main_window(app) {
-                    eprintln!("显示主窗口失败: {error}");
+                    log::error!("显示主窗口失败: {error}");
                 }
             }
             "quit" => app.exit(0),
@@ -39,7 +39,7 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
             } = event
             {
                 if let Err(error) = show_main_window(tray.app_handle()) {
-                    eprintln!("显示主窗口失败: {error}");
+                    log::error!("显示主窗口失败: {error}");
                 }
             }
         })
@@ -70,7 +70,7 @@ pub fn setup_close_to_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), String>
         if let WindowEvent::CloseRequested { api, .. } = event {
             api.prevent_close();
             if let Err(error) = window_to_hide.hide() {
-                eprintln!("隐藏主窗口失败: {error}");
+                log::error!("隐藏主窗口失败: {error}");
             }
         }
     });

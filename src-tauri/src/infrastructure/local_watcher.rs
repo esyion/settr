@@ -30,12 +30,12 @@ impl LocalFileWatcher {
                 Ok(event) => {
                     if event_affects_documents(&watched_documents, &event.paths) {
                         if let Err(error) = app_handle.emit(LOCAL_FILE_CHANGED_EVENT, ()) {
-                            eprintln!("发送本地文件变更事件失败: {error}");
+                            log::error!("发送本地文件变更事件失败: {error}");
                         }
                     }
                 }
                 Err(error) => {
-                    eprintln!("本地文件监听失败: {error}");
+                    log::error!("本地文件监听失败: {error}");
                 }
             })
             .map_err(|error| format!("无法初始化本地规则文件监听: {error}"))?;

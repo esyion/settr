@@ -83,7 +83,7 @@ export function CreateSkillDialog({
               autoComplete="off"
               disabled={submitting}
             />
-            <p className="text-xs text-muted-foreground">^[a-z0-9][a-z0-9-]&#123;0,63&#125;$</p>
+            <p className="text-xs text-muted-foreground">小写字母、数字或连字符,以字母或数字开头,最长 64 字符,如 my-skill</p>
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="skill-display">显示名</Label>

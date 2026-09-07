@@ -115,13 +115,14 @@ export function SkillRow({
                     onPressedChange={() => onToggleHarness(h, !enabled)}
                     disabled={busy}
                     aria-label={`${meta.label}: ${enabled ? "已启用" : "未启用"}`}
-                    className={`size-7 rounded-md border ${enabled ? meta.enabledClass : "border-transparent"} ${meta.tone}`}
+                    className={`h-7 gap-1 rounded-md border px-2 ${enabled ? meta.enabledClass : "border-transparent"} ${meta.tone}`}
                   >
                     {busy ? (
                       <Loader2 className="size-3 animate-spin" />
                     ) : (
                       <Icon className="size-3.5" />
                     )}
+                    <span className="text-[10px] font-medium">{meta.label}</span>
                   </Toggle>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
@@ -132,7 +133,7 @@ export function SkillRow({
             );
           })}
         </div>
-        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

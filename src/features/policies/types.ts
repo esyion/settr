@@ -32,7 +32,7 @@ export interface PoliciesDataApi {
     policyType: "AGENT" | "CLAUDE";
     content: string;
     message: string;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   reviewPolicyChange: (
     requestId: string,
     decision: "APPROVED" | "REJECTED",

@@ -18,14 +18,34 @@ const RESET_DEEP_LINK_SCHEME: &str = "agentsplus";
 pub fn run() {
     let builder = tauri::Builder::default();
 
+    // 生产日志：开发期输出到 stdout（Debug 级），Release 写入系统日志目录（Info 级），
+    // 文件超限轮转且保留旧文件；路径为 %LOCALAPPDATA%/com.msi.agents-plus/logs。
+    let builder = builder.plugin(
+        tauri_plugin_log::Builder::new()
+            .targets([
+                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                    file_name: None,
+                }),
+            ])
+            .level(if cfg!(debug_assertions) {
+                log::LevelFilter::Debug
+            } else {
+                log::LevelFilter::Info
+            })
+            .max_file_size(512_000)
+            .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+            .build(),
+    );
+
     #[cfg(target_os = "windows")]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
         if let Some(window) = app.get_webview_window("main") {
             if let Err(error) = window.show() {
-                eprintln!("聚焦已有实例窗口失败: {error}");
+                log::error!("聚焦已有实例窗口失败: {error}");
             }
             if let Err(error) = window.set_focus() {
-                eprintln!("聚焦已有实例窗口失败: {error}");
+                log::error!("聚焦已有实例窗口失败: {error}");
             }
         }
         let urls: Vec<String> = _args
@@ -36,7 +56,7 @@ pub fn run() {
         if !urls.is_empty() {
             // 直接向所有窗口发送深链事件，无需调用 on_open_url
             if let Err(error) = app.emit("deep-link://new-url", urls) {
-                eprintln!("派发深链事件到已有实例失败: {error}");
+                log::error!("派发深链事件到已有实例失败: {error}");
             }
         }
     }));
@@ -47,7 +67,7 @@ pub fn run() {
             #[cfg(any(windows, target_os = "linux"))]
             {
                 if let Err(error) = app.deep_link().register(RESET_DEEP_LINK_SCHEME) {
-                    eprintln!("注册深链协议失败: {error}");
+                    log::error!("注册深链协议失败: {error}");
                 }
             }
 
@@ -56,7 +76,7 @@ pub fn run() {
             app.deep_link().on_open_url(move |event| {
                 let urls: Vec<String> = event.urls().iter().map(|url| url.to_string()).collect();
                 if let Err(error) = handle.emit("deep-link://new-url", urls) {
-                    eprintln!("派发深链事件失败: {error}");
+                    log::error!("派发深链事件失败: {error}");
                 }
             });
 

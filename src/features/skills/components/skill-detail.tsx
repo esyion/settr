@@ -6,17 +6,13 @@ import { ArrowLeft, Download, FileUp, History, Loader2, Package, RefreshCw, Tras
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api-client";
+import { DeleteSkillDialog } from "@/features/skills/components/delete-skill-dialog";
+import { PublishVersionDialog } from "@/features/skills/components/publish-version-dialog";
 import { readableError } from "@/features/skills/components/skill-row";
-import { publishSkillVersion, fileToBytesAsync } from "@/features/skills/api";
 import type { Skill, SkillVersion } from "@/lib/contracts";
 import { toast } from "sonner";
 
-const VERSION_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 
 /**
  * Skill 详情页:展示元数据 + 版本列表,支持发布新版本与删除。
@@ -29,6 +25,8 @@ export function SkillDetail({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -49,15 +47,19 @@ export function SkillDetail({ id }: { id: string }) {
     void Promise.resolve().then(() => refresh());
   }, [refresh]);
 
+  /** 确认对话框点击删除后执行,成功后返回列表页。 */
   const handleDelete = async () => {
     if (!skill) return;
-    if (!window.confirm(`确认删除 "${skill.name}"?此操作不可恢复。`)) return;
+    setDeleting(true);
     try {
       await api.deleteSkill(skill.id);
       toast.success("skill 已删除");
+      setDeleteOpen(false);
       router.push("/skills");
     } catch (err) {
       toast.error(readableError(err));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -121,7 +123,7 @@ export function SkillDetail({ id }: { id: string }) {
           <Button onClick={() => setPublishOpen(true)}>
             <FileUp /> 发布版本
           </Button>
-          <Button variant="ghost" onClick={handleDelete} aria-label="删除">
+          <Button variant="ghost" onClick={() => setDeleteOpen(true)} aria-label="删除">
             <Trash2 />
           </Button>
         </div>
@@ -148,6 +150,13 @@ export function SkillDetail({ id }: { id: string }) {
         </CardContent>
       </Card>
 
+      <DeleteSkillDialog
+        skillName={skill.displayName || skill.name}
+        open={deleteOpen}
+        busy={deleting}
+        onOpenChange={setDeleteOpen}
+        onConfirm={() => void handleDelete()}
+      />
       <PublishVersionDialog
         skillId={id}
         open={publishOpen}
@@ -179,109 +188,6 @@ function VersionRow({ version }: { version: SkillVersion }) {
         </Button>
       )}
     </div>
-  );
-}
-
-function PublishVersionDialog({
-  skillId, open, onOpenChange, onPublished,
-}: {
-  skillId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onPublished: () => void;
-}) {
-  const [version, setVersion] = useState("");
-  const [changelog, setChangelog] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async () => {
-    if (!VERSION_PATTERN.test(version)) {
-      toast.error("version 必须为 semver 或上游 tag 字符");
-      return;
-    }
-    if (!file) {
-      toast.error("请选择 ZIP 文件");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      // 走 IPC gateway,后端统一负责鉴权、HTTPS 校验和 multipart 拼装(AGENTS.md §4.1 / §7)。
-      const zipBytes = await fileToBytesAsync(file);
-      const res = await publishSkillVersion({
-        skillId,
-        version,
-        changelog: changelog || undefined,
-        zipBytes,
-      });
-      if (res.status >= 400) {
-        let msg = "上传失败";
-        try {
-          const parsed = JSON.parse(res.body) as { message?: string };
-          msg = parsed.message || msg;
-        } catch {
-          /* ignore */
-        }
-        throw new Error(msg);
-      }
-      toast.success("版本发布成功");
-      setVersion(""); setChangelog(""); setFile(null);
-      onPublished();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "发布失败");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => { if (!submitting) onOpenChange(v); }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>发布新版本</DialogTitle>
-          <DialogDescription>上传 ZIP 文件并填写版本号。ZIP 顶层必须含 SKILL.md.</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          <div className="grid gap-1.5">
-            <Label>版本号</Label>
-            <Input
-              value={version}
-              onChange={(e) => setVersion(e.target.value)}
-              placeholder="1.0.0"
-              disabled={submitting}
-            />
-            <p className="text-xs text-muted-foreground">^[A-Za-z0-9._-]&#123;1,64&#125;$</p>
-          </div>
-          <div className="grid gap-1.5">
-            <Label>变更说明</Label>
-            <Textarea
-              value={changelog}
-              onChange={(e) => setChangelog(e.target.value)}
-              rows={2}
-              placeholder="可选"
-              disabled={submitting}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label>ZIP 文件</Label>
-            <Input
-              type="file"
-              accept=".zip,application/zip"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              disabled={submitting}
-            />
-            {file && <p className="text-xs text-muted-foreground">{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>取消</Button>
-          <Button onClick={submit} disabled={submitting}>
-            {submitting && <Loader2 className="animate-spin" />}
-            <FileUp /> 发布
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 

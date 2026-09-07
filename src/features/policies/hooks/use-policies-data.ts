@@ -75,13 +75,16 @@ export function usePoliciesData(): PoliciesDataApi {
       content: string;
       message: string;
     }) => {
-      if (!organizationId) return;
+      /** 返回是否提交成功,供表单决定是否清空输入。 */
+      if (!organizationId) return false;
       setBusy("提交政策");
       try {
         await policiesApi.submitPolicyDraft(organizationId, input);
         toast.success("政策草稿已提交");
+        return true;
       } catch (caught) {
         toast.error(readableError(caught, "提交政策失败"));
+        return false;
       } finally {
         setBusy(null);
       }

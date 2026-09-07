@@ -41,9 +41,18 @@ export function SubmitPolicyCard({ data }: { data: PoliciesDataApi }) {
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            void data.submitPolicyChange({ policyType, content, message });
-            setContent("");
-            setMessage("");
+            // 仅在提交成功后清空输入,失败保留内容供用户重试。
+            void (async () => {
+              const ok = await data.submitPolicyChange({
+                policyType,
+                content,
+                message,
+              });
+              if (ok) {
+                setContent("");
+                setMessage("");
+              }
+            })();
           }}
         >
           <div className="flex flex-col gap-1">
