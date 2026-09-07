@@ -1,3 +1,4 @@
+import { APP_VERSION } from "@/lib/app-version";
 import {
   api,
   ApiClientError,
@@ -14,7 +15,6 @@ import type {
 import { clearSession, loadSession } from "@/lib/session-store";
 import { normalizeContentHash } from "@/features/sync/hash";
 
-export const APP_VERSION = "0.1.0";
 export const EMPTY_STATE: SyncState = {
   status: "loading",
   format: "agentsMd",

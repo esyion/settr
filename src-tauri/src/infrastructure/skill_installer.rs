@@ -77,7 +77,10 @@ pub async fn install_to_local(
     state: &SkillsStateStore,
     skill_id: &str,
 ) -> Result<InstallResult, InstallError> {
-    let detail = api.get_skill(skill_id).await.map_err(|e| InstallError::Api(e.to_string()))?;
+    let detail = api
+        .get_skill(skill_id)
+        .await
+        .map_err(|e| InstallError::Api(e.to_string()))?;
     let version = detail
         .latest_version
         .clone()
@@ -126,10 +129,6 @@ pub async fn install_to_local(
         let method = snap.global_sync_method;
         match dispatch_to_harness(home, &detail.name, h, method) {
             Ok(DispatchOutcome::Synced { .. }) => synced.push(h.as_str().to_string()),
-            Ok(other) => failed.push(DispatchFailure {
-                harness: h.as_str().to_string(),
-                error: format!("dispatch skipped: {:?}", other),
-            }),
             Err(e) => failed.push(DispatchFailure {
                 harness: h.as_str().to_string(),
                 error: dispatch_error_to_string(&e),
@@ -182,13 +181,6 @@ pub fn sync_one(
     match &outcome {
         DispatchOutcome::Synced { .. } => {
             let _ = state.record_sync(skill_id, None, None);
-        }
-        DispatchOutcome::Skipped | DispatchOutcome::Failed(_) => {
-            let _ = state.record_sync(
-                skill_id,
-                None,
-                Some(format!("[{}] dispatch: {:?}", harness.as_str(), outcome)),
-            );
         }
     }
     Ok(outcome)

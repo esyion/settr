@@ -179,15 +179,29 @@ mod tests {
         // 重新加载
         let reloaded = SkillsStateStore::load(&p).unwrap();
         let snap = reloaded.snapshot();
-        assert!(snap.skills.get("alpha").unwrap().enabled_harnesses.contains("claude"));
+        assert!(snap
+            .skills
+            .get("alpha")
+            .unwrap()
+            .enabled_harnesses
+            .contains("claude"));
     }
 
     #[test]
     fn record_sync_writes_version() {
         let p = tmp_state_path();
         let store = SkillsStateStore::load(&p).unwrap();
-        store.record_sync("beta", Some("1.0.0".to_string()), None).unwrap();
+        store
+            .record_sync("beta", Some("1.0.0".to_string()), None)
+            .unwrap();
         let snap = store.snapshot();
-        assert_eq!(snap.skills.get("beta").unwrap().last_synced_version.as_deref(), Some("1.0.0"));
+        assert_eq!(
+            snap.skills
+                .get("beta")
+                .unwrap()
+                .last_synced_version
+                .as_deref(),
+            Some("1.0.0")
+        );
     }
 }

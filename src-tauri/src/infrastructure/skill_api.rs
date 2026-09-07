@@ -5,18 +5,6 @@
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize)]
-struct EnvelopeOk<T> {
-    ok: bool,
-    data: T,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    request_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    timestamp: Option<String>,
-}
-
 /// 服务端返回的 skill 摘要(用于客户端列表)。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,20 +64,27 @@ pub struct SkillApiClient {
 
 impl SkillApiClient {
     pub fn new(base_url: String, access_token: String) -> Self {
-        Self { base_url, access_token }
+        Self {
+            base_url,
+            access_token,
+        }
     }
 
     /// 拉取 skill 列表(scope=personal;org-scope 后续支持)。
     pub async fn list_skills(&self) -> Result<Vec<SkillSummary>, SkillApiError> {
         let body = serde_json::json!({ "scope": "personal", "size": 100 });
         let raw: serde_json::Value = self.get("/api/v1/skills", Some(body)).await?;
-        let records = raw.get("records").cloned().unwrap_or(serde_json::Value::Null);
+        let records = raw
+            .get("records")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
         serde_json::from_value(records).map_err(|e| SkillApiError::Decode(e.to_string()))
     }
 
     /// 拉取 skill 详情。
     pub async fn get_skill(&self, skill_id: &str) -> Result<SkillDetail, SkillApiError> {
-        self.get(&format!("/api/v1/skills/{}", skill_id), None).await
+        self.get(&format!("/api/v1/skills/{}", skill_id), None)
+            .await
     }
 
     /// 拉取指定版本的详情(含 presigned download URL)。
@@ -121,7 +116,7 @@ impl SkillApiClient {
             req_id,
         )
         .await
-        .map_err(|e| SkillApiError::Ipc(e))?;
+        .map_err(SkillApiError::Ipc)?;
         let parsed: serde_json::Value =
             serde_json::from_str(&result.body).map_err(|e| SkillApiError::Decode(e.to_string()))?;
         if parsed.get("code").and_then(|v| v.as_i64()).unwrap_or(-1) != 0 {
@@ -130,10 +125,19 @@ impl SkillApiClient {
                 .and_then(|v| v.as_str())
                 .unwrap_or("未知错误")
                 .to_string();
-            let request_id = parsed.get("requestId").and_then(|v| v.as_str()).map(String::from);
-            return Err(SkillApiError::Business { message, request_id });
+            let request_id = parsed
+                .get("requestId")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            return Err(SkillApiError::Business {
+                message,
+                request_id,
+            });
         }
-        let data = parsed.get("data").cloned().unwrap_or(serde_json::Value::Null);
+        let data = parsed
+            .get("data")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
         serde_json::from_value(data).map_err(|e| SkillApiError::Decode(e.to_string()))
     }
 }

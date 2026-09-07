@@ -11,11 +11,10 @@
 //! 本文件严格保持 command 薄:不做 IO、不做编排,所有业务交给 {@link application::skill::SkillUseCases}。
 
 use crate::application::skill::SkillContext;
-use crate::infrastructure::skill_api::SkillApiClient;
 use crate::domain::skill::HarnessId;
 use crate::dto::skill::{InstallResultDto, SkillListItemDto};
+use crate::infrastructure::skill_api::SkillApiClient;
 use crate::shared::error::SkillError;
-use serde::Deserialize;
 use std::path::PathBuf;
 use tauri::State;
 
@@ -45,7 +44,8 @@ fn build_for_use(
     state: &State<'_, crate::state::AppState>,
 ) -> Result<(PathBuf, SkillContext), SkillError> {
     let ctx = extract_context(state)?;
-    let home = dirs::home_dir().ok_or_else(|| SkillError::Internal("无法解析 home 目录".to_string()))?;
+    let home =
+        dirs::home_dir().ok_or_else(|| SkillError::Internal("无法解析 home 目录".to_string()))?;
     Ok((home, ctx))
 }
 
@@ -61,14 +61,12 @@ pub async fn list_skills(
     let api = SkillApiClient::new(ctx.base_url, ctx.access_token);
     api.list_skills()
         .await
-        .map(|list| list.into_iter().map(SkillListItemDto::from).collect::<Vec<_>>())
+        .map(|list| {
+            list.into_iter()
+                .map(SkillListItemDto::from)
+                .collect::<Vec<_>>()
+        })
         .map_err(|e| format!("[INSTALL_FAILED] 拉取列表失败: {e}"))
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SkillIdArgs {
-    pub skill_id: String,
 }
 
 /// 装到本地 SSOT(并按 state 自动同步到已启用 harness)。
@@ -84,14 +82,6 @@ pub async fn install_skill(
         .await
         .map(InstallResultDto::from)
         .map_err(|e| format!("[{}] {}", e.code(), e))
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HarnessArgs {
-    pub skill_id: String,
-    pub skill_name: String,
-    pub harness: String,
 }
 
 /// 启用 harness(自动 install + dispatch)。
@@ -167,4 +157,3 @@ pub fn read_local_skill_state(
     uc.read_local_state()
         .map_err(|e| format!("[{}] {}", e.code(), e))
 }
-

@@ -76,8 +76,6 @@ pub async fn request(
     })
 }
 
-
-
 /// Multipart 上传请求:服务端期望 multipart/form-data 包含一个或多个 part。
 /// <p>
 /// 当前 skill 业务只用到 zip + meta,但 DTO 通用化以支持后续。
@@ -206,8 +204,6 @@ pub async fn upload_multipart(
     })
 }
 
-
-
 #[cfg(test)]
 mod multipart_tests {
     use super::{build_multipart_body, MultipartPart};
@@ -236,7 +232,9 @@ mod multipart_tests {
         assert!(text.contains(&format!("--{boundary}--\r\n")));
         // Content-Disposition 含 name 与 filename
         assert!(text.contains("Content-Disposition: form-data; name=\"name\""));
-        assert!(text.contains("Content-Disposition: form-data; name=\"zip\"; filename=\"skill.zip\""));
+        assert!(
+            text.contains("Content-Disposition: form-data; name=\"zip\"; filename=\"skill.zip\"")
+        );
         // Content-Type 出现在 zip part
         assert!(text.contains("Content-Type: application/zip"));
         // body 实际字节包含 zip magic 与 my-skill 文本

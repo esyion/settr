@@ -74,31 +74,6 @@ pub enum SyncMethod {
     Copy,
 }
 
-/// 启用矩阵条目(单一 skill × 单一 harness 的状态)。
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct HarnessEnablement {
-    pub harness: HarnessId,
-    pub method: SyncMethod,
-    pub last_synced_version: Option<String>,
-    pub last_synced_at: Option<String>,
-    pub last_install_error: Option<String>,
-}
-
-/// 单一 skill 的本地启用状态(对应 ~/.agents-plus/skills-state.json 中的 entries)。
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LocalSkillState {
-    /// 启用的 harness 列表(顺序 = 用户启用顺序)。
-    pub enabled_harnesses: Vec<HarnessId>,
-    /// 单 skill 覆盖的同步方式(为空则用全局 default)。
-    pub sync_method_override: Option<SyncMethod>,
-    /// 当前已部署的 version 字符串。
-    pub last_synced_version: Option<String>,
-    /// 最近一次失败信息(若有)。
-    pub last_install_error: Option<String>,
-}
-
 /// skill name 合法性:仅小写字母/数字/连字符,首字符为字母或数字,长度 1-64。
 /// <p>
 /// 对齐 spec §9 与后端 SkillService 的 @Pattern:^[a-z0-9][a-z0-9-]{0,63}$。
@@ -111,7 +86,8 @@ pub fn is_valid_skill_name(name: &str) -> bool {
     if !(first.is_ascii_digit() || (first.is_ascii_lowercase())) {
         return false;
     }
-    name.chars().all(|c| c.is_ascii_digit() || (c.is_ascii_lowercase()) || c == '-')
+    name.chars()
+        .all(|c| c.is_ascii_digit() || (c.is_ascii_lowercase()) || c == '-')
 }
 
 /// 单元测试。

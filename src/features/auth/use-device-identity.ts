@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { DeviceIdentity } from "@/lib/contracts";
-import { APP_VERSION } from "@/features/sync/sync-state";
+import { APP_VERSION } from "@/lib/app-version";
 import { loadRuntimeSnapshot } from "@/lib/api-client";
 import { isTauriRuntime } from "@/lib/tauri";
 

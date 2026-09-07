@@ -1,7 +1,13 @@
+//! 认证会话凭据的 Tauri command 薄适配器。
+//!
+//! 会话以 JSON 字符串形式持久化到 OS keyring;前端通过 invoke 调用。
+
 use keyring::Entry;
+
 const KEYRING_SERVICE: &str = "com.msi.agents-plus";
 const KEYRING_USER: &str = "auth-session";
 
+/// 从 OS keyring 读取已保存的登录会话 JSON;不存在返回 None。
 #[tauri::command]
 pub fn get_auth_session() -> Result<Option<String>, String> {
     let entry = Entry::new(KEYRING_SERVICE, KEYRING_USER)
@@ -13,6 +19,7 @@ pub fn get_auth_session() -> Result<Option<String>, String> {
     }
 }
 
+/// 将登录会话 JSON 写入 OS keyring 并回读校验;超过 32 KiB 拒绝。
 #[tauri::command]
 pub fn save_auth_session(session: String) -> Result<(), String> {
     if session.len() > 32_768 {
@@ -30,6 +37,7 @@ pub fn save_auth_session(session: String) -> Result<(), String> {
     }
 }
 
+/// 删除 OS keyring 中的登录会话;条目不存在视为已清理成功。
 #[tauri::command]
 pub fn clear_auth_session() -> Result<(), String> {
     let entry = Entry::new(KEYRING_SERVICE, KEYRING_USER)

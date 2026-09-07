@@ -22,7 +22,9 @@ pub fn cache_root(home: &Path) -> PathBuf {
 
 /// 单一 skill 的 ZIP 缓存文件。
 pub fn cache_zip_path(home: &Path, skill_id: &str, version: &str) -> PathBuf {
-    cache_root(home).join(skill_id).join(format!("{version}.zip"))
+    cache_root(home)
+        .join(skill_id)
+        .join(format!("{version}.zip"))
 }
 
 /// 客户端状态文件(~/.agents-plus/skills-state.json)。
@@ -45,7 +47,10 @@ mod tests {
     #[test]
     fn paths_relative_to_home() {
         let home = std::path::PathBuf::from("/home/u");
-        assert_eq!(ssot_root(&home), std::path::PathBuf::from("/home/u/.agents-plus/skills"));
+        assert_eq!(
+            ssot_root(&home),
+            std::path::PathBuf::from("/home/u/.agents-plus/skills")
+        );
         assert_eq!(
             ssot_skill_dir(&home, "alpha"),
             std::path::PathBuf::from("/home/u/.agents-plus/skills/alpha")

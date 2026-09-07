@@ -39,7 +39,10 @@ impl SkillContext {
         } else {
             base_url.to_string()
         };
-        Ok(Self { base_url, access_token })
+        Ok(Self {
+            base_url,
+            access_token,
+        })
     }
 }
 
@@ -115,7 +118,7 @@ impl SkillUseCases {
 
     /// 扫描本机存在的 harness(返回有 skills/ 目录的 harness 名称列表)。
     /// <p>
-/// 实现走文件系统访问,放在 use case 层而非 command 层(AGENTS.md §4.2 不在 command 直访 IO)。
+    /// 实现走文件系统访问,放在 use case 层而非 command 层(AGENTS.md §4.2 不在 command 直访 IO)。
     pub fn scan_installed_harnesses(&self) -> Vec<String> {
         HarnessId::ALL
             .iter()
@@ -129,15 +132,4 @@ impl SkillUseCases {
         let snap = self.state.snapshot();
         serde_json::to_value(snap).map_err(|e| SkillError::Internal(e.to_string()))
     }
-}
-
-/// 从全局 home 目录构造 use cases(MVP 工厂;真实部署可由 command 层注入)。
-/// <p>
-/// token 不再需要参数;自动从 keyring 拉。base_url 传空时回退到环境变量。
-pub fn build_default_skill_use_cases(
-    base_url: String,
-) -> Result<SkillUseCases, SkillError> {
-    let home = dirs::home_dir().ok_or_else(|| SkillError::Internal("无法解析 home 目录".to_string()))?;
-    let ctx = SkillContext::from_global(&base_url)?;
-    SkillUseCases::new(home, ctx)
 }

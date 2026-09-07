@@ -2,13 +2,11 @@
 import { useCallback, useEffect } from "react";
 import {
   api,
-  ApiClientError,
   applyRemoteDocument,
   saveLocalManifest,
 } from "@/lib/api-client";
 import type {
   DocumentFormat,
-  LocalManifest,
   Revision,
   SyncState,
 } from "@/lib/contracts";
@@ -20,29 +18,13 @@ import { useDeviceMaintenance } from "@/features/sync/use-device-maintenance";
 import { useSyncStore } from "@/features/sync/store/sync-store";
 import { mergeDocuments } from "@/lib/merge";
 import { normalizeContentHash, sha256 } from "@/features/sync/hash";
+import { EMPTY_STATE, loadWorkspace } from "@/features/sync/sync-state";
+import { APP_VERSION } from "@/lib/app-version";
 import {
-  APP_VERSION,
-  EMPTY_STATE,
-  loadWorkspace,
-} from "@/features/sync/sync-state";
-/** Converts an unknown failure into a user-facing message with request context. */
-function readableError(error: unknown) {
-  if (error instanceof ApiClientError)
-    return (
-      error.message +
-      (error.requestId ? "（请求 ID: " + error.requestId + "）" : "")
-    );
-  if (error instanceof Error) return error.message;
-  return "发生未知错误";
-}
-/** Returns whether an error indicates that the desktop cannot reach its backend. */
-function isOfflineError(error: unknown) {
-  return (
-    error instanceof Error &&
-    (error.message.startsWith("NETWORK_") ||
-      error.message.startsWith("DESKTOP_RUNTIME_REQUIRED"))
-  );
-}
+  buildSyncManifest,
+  isOfflineError,
+  readableError,
+} from "@/features/sync/sync-helpers";
 /** Coordinates workspace loading, local changes, remote revisions, and user actions. */
 export function useSyncController() {
   const {
@@ -162,18 +144,7 @@ export function useSyncController() {
           appVersion: APP_VERSION,
         },
       });
-      await saveLocalManifest(state.format, {
-        ...state.local.manifest,
-        schemaVersion: 1,
-        documentId: state.document.id,
-        deviceId: state.identity?.deviceId || null,
-        baseRevisionId: revision.id,
-        baseContentHash: revision.contentHash,
-        lastAppliedRevisionId: revision.id,
-        lastSyncedAt: new Date().toISOString(),
-        localContentHash: revision.contentHash,
-      });
-      setNotice("已创建云端版本 " + revision.id);
+      await saveLocalManifest(state.format, buildSyncManifest(state.local.manifest, { documentId: state.document.id, deviceId: state.identity?.deviceId || null }, revision));
       await refresh();
     });
   }
@@ -182,26 +153,10 @@ export function useSyncController() {
     await action("apply", async () => {
       const target = revision || state.head;
       if (!target) throw new Error("云端还没有可应用的版本");
-      const manifest: LocalManifest = {
-        ...(state.local?.manifest || {
-          schemaVersion: 1,
-          documentId: null,
-          deviceId: null,
-          baseRevisionId: null,
-          baseContentHash: null,
-          lastAppliedRevisionId: null,
-          lastSyncedAt: null,
-          localContentHash: null,
-        }),
-        schemaVersion: 1,
+      const manifest = buildSyncManifest(state.local?.manifest, {
         documentId: state.document?.id || null,
         deviceId: state.identity?.deviceId || null,
-        baseRevisionId: target.id,
-        baseContentHash: target.contentHash,
-        lastAppliedRevisionId: target.id,
-        lastSyncedAt: new Date().toISOString(),
-        localContentHash: target.contentHash,
-      };
+      }, target);
       await applyRemoteDocument(
         state.format,
         target.content,
@@ -248,17 +203,10 @@ export function useSyncController() {
         clientMutationId: crypto.randomUUID(),
         metadata: { source: "merge", baseRevisionId: state.base?.id || null },
       });
-      const manifest: LocalManifest = {
-        ...state.local.manifest,
-        schemaVersion: 1,
+      const manifest = buildSyncManifest(state.local.manifest, {
         documentId: state.document.id,
         deviceId: state.identity?.deviceId || null,
-        baseRevisionId: revision.id,
-        baseContentHash: revision.contentHash,
-        lastAppliedRevisionId: revision.id,
-        lastSyncedAt: new Date().toISOString(),
-        localContentHash: revision.contentHash,
-      };
+      }, revision);
       await applyRemoteDocument(
         state.format,
         mergeDraft,
@@ -295,26 +243,10 @@ export function useSyncController() {
         revisionId,
         "从历史版本恢复",
       );
-      const manifest: LocalManifest = {
-        ...(state.local?.manifest || {
-          schemaVersion: 1,
-          documentId: null,
-          deviceId: null,
-          baseRevisionId: null,
-          baseContentHash: null,
-          lastAppliedRevisionId: null,
-          lastSyncedAt: null,
-          localContentHash: null,
-        }),
-        schemaVersion: 1,
+      const manifest = buildSyncManifest(state.local?.manifest, {
         documentId: state.document!.id,
         deviceId: state.identity?.deviceId || null,
-        baseRevisionId: revision.id,
-        baseContentHash: revision.contentHash,
-        lastAppliedRevisionId: revision.id,
-        lastSyncedAt: new Date().toISOString(),
-        localContentHash: revision.contentHash,
-      };
+      }, revision);
       await applyRemoteDocument(
         state.format,
         revision.content,

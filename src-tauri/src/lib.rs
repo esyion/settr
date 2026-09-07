@@ -1,11 +1,11 @@
-mod commands;
 pub mod application;
-pub mod dto;
-pub mod shared;
-pub mod state;
+mod commands;
 mod domain;
+pub mod dto;
 mod hash;
 mod infrastructure;
+pub mod shared;
+pub mod state;
 use tauri::Emitter;
 use tauri::Manager;
 use tauri_plugin_deep_link::DeepLinkExt;

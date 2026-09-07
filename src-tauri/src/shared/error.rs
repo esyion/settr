@@ -51,21 +51,3 @@ impl From<SkillError> for SkillErrorDto {
         }
     }
 }
-
-/// IPC 错误响应结构(对齐 AGENTS.md §5 推荐的 IpcResult 风格)。
-#[derive(Debug, Serialize)]
-#[serde(tag = "ok", rename_all = "camelCase")]
-pub enum IpcResponse<T: Serialize> {
-    Ok { data: T },
-    #[serde(rename = "false")]
-    Err { error: SkillErrorDto },
-}
-
-impl<T: Serialize> From<Result<T, SkillError>> for IpcResponse<T> {
-    fn from(r: Result<T, SkillError>) -> Self {
-        match r {
-            Ok(data) => IpcResponse::Ok { data },
-            Err(e) => IpcResponse::Err { error: e.into() },
-        }
-    }
-}

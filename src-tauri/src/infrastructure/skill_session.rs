@@ -7,14 +7,6 @@ const KEYRING_USER: &str = "auth-session";
 #[serde(rename_all = "camelCase")]
 pub struct StoredSession {
     pub access_token: String,
-    #[serde(default)]
-    pub refresh_token: String,
-    #[serde(default)]
-    pub user_id: String,
-    #[serde(default)]
-    pub device_id: String,
-    #[serde(default)]
-    pub session_id: String,
 }
 
 /// 从 keyring 读取 access_token;不存在或解析失败返回 NotAuthenticated。
@@ -35,16 +27,3 @@ pub fn read_access_token() -> Result<String, SkillError> {
         Err(_) => Err(SkillError::NotAuthenticated),
     }
 }
-
-/// 顺便读整个 session(给前端需要时用)。
-pub fn read_full_session() -> Result<StoredSession, SkillError> {
-    let entry = Entry::new(KEYRING_SERVICE, KEYRING_USER)
-        .map_err(|e| SkillError::Internal(format!("访问系统凭据失败: {e}")))?;
-    let raw = match entry.get_password() {
-        Ok(v) => v,
-        Err(keyring::Error::NoEntry) => return Err(SkillError::NotAuthenticated),
-        Err(e) => return Err(SkillError::Internal(format!("读取系统凭据失败: {e}"))),
-    };
-    serde_json::from_str(&raw).map_err(|_| SkillError::NotAuthenticated)
-}
-

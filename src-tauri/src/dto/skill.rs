@@ -60,7 +60,10 @@ pub struct DispatchFailureDto {
 
 impl From<DispatchFailure> for DispatchFailureDto {
     fn from(f: DispatchFailure) -> Self {
-        Self { harness: f.harness, error: f.error }
+        Self {
+            harness: f.harness,
+            error: f.error,
+        }
     }
 }
 
@@ -77,12 +80,4 @@ impl From<InstallResult> for InstallResultDto {
             failed_harnesses: r.failed_harnesses.into_iter().map(Into::into).collect(),
         }
     }
-}
-
-/// 错误 DTO:稳定 code + message,前端可按 code 分支处理。
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SkillErrorDto {
-    pub code: String,
-    pub message: String,
 }

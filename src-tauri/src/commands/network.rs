@@ -12,7 +12,6 @@ pub async fn api_request(
     api::request(base_url, method, path, body, access_token, request_id).await
 }
 
-
 /// Multipart 上传到后端:接收一组 part,转发为 multipart/form-data POST。
 /// <p>
 /// 这是 {@link api_request} 的二进制伴侣:同一路径白名单与 HTTPS 校验逻辑,

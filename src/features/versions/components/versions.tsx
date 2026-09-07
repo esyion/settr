@@ -1,8 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
-import type { DiffFile } from "@git-diff-view/file";
+import { useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -47,6 +46,9 @@ import {
 import { api } from "@/lib/api-client";
 import type { Revision, SyncState } from "@/lib/contracts";
 import { getDocumentFormatConfig } from "@/lib/document-formats";
+import { formatTime, shortHash } from "@/lib/format";
+import { useRevisionDiff } from "@/features/versions/hooks/use-revision-diff";
+import { DiffViewer, DiffUnavailable } from "@/features/versions/components/diff-viewer";
 
 const OPEN_SOURCE_UNIFIED_MODE = 4;
 const DiffView = dynamic(
@@ -58,28 +60,6 @@ const DiffView = dynamic(
 );
 
 /** Formats a revision timestamp for display. */
-function formatTime(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : new Intl.DateTimeFormat("zh-CN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(date);
-}
-/** Returns the short display form of a revision hash. */
-function shortHash(value: string) {
-  return value.replace(/^sha256:/i, "").slice(0, 12);
-}
-
-type DiffState = {
-  key: string;
-  file: DiffFile | null;
-  error: string | null;
-  loading: boolean;
-};
-
-/** Renders the revision timeline, revision content, and restore controls. */
 export function Versions({
   state,
   busy,
@@ -96,58 +76,10 @@ export function Versions({
   const [loadingMore, setLoadingMore] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<Revision | null>(null);
   const [detailMode, setDetailMode] = useState<"content" | "diff">("content");
-  const [diffState, setDiffState] = useState<DiffState | null>(null);
   const formatConfig = getDocumentFormatConfig(state.format);
   const localContent = state.local?.content;
-  const diffKey =
-    detailMode === "diff" && selected && localContent !== null && localContent !== undefined
-      ? `${formatConfig.label}:${selected.id}:${state.local?.contentHash ?? localContent}`
-      : null;
-
-  /** Builds and disposes the open-source unified diff when its inputs change. */
-  useEffect(() => {
-    if (!diffKey || !selected || localContent === null || localContent === undefined) {
-      return;
-    }
-    let active = true;
-    let generated: DiffFile | null = null;
-    void Promise.resolve()
-      .then(() => {
-        if (!active) return null;
-        setDiffState({ key: diffKey, file: null, error: null, loading: true });
-        return import("@git-diff-view/file");
-      })
-      .then((module) => {
-        if (!module || !active) return;
-        generated = module.generateDiffFile(
-          `local/${formatConfig.label}`,
-          localContent,
-          `revision/${selected.id}/${formatConfig.label}`,
-          selected.content,
-          "markdown",
-          "markdown",
-        );
-        generated.initTheme("light");
-        generated.init();
-        generated.buildUnifiedDiffLines();
-        setDiffState({ key: diffKey, file: generated, error: null, loading: false });
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setDiffState({
-            key: diffKey,
-            file: null,
-            error: error instanceof Error ? error.message : "无法生成 Unified Diff",
-            loading: false,
-          });
-        }
-      });
-    return () => {
-      active = false;
-      generated?.clear();
-    };
-  }, [diffKey, formatConfig.label, localContent, selected]);
-
+  const diffState = useRevisionDiff(state.format, selected, localContent ?? undefined);
+  const diffKey = detailMode === "diff" && selected ? diffState?.key ?? null : null;
   /** Loads a revision's full content into the detail pane. */
   async function open(id: string) {
     if (!state.document) return;
@@ -276,61 +208,14 @@ export function Versions({
                       aria-label="版本正文"
                     />
                   </TabsContent>
-                  <TabsContent value="diff" className="pt-3">
-                    {localContent === null || localContent === undefined ? (
-                      <Empty className="min-h-[420px] border">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <GitCompareArrows />
-                          </EmptyMedia>
-                          <EmptyTitle>无法比较本地文件</EmptyTitle>
-                          <EmptyDescription>
-                            本机尚未找到可用于比较的 {formatConfig.displayPath}。
-                          </EmptyDescription>
-                        </EmptyHeader>
-                      </Empty>
-                    ) : diffState?.key === diffKey && diffState.error ? (
-                      <Alert variant="destructive">
-                        <AlertCircle />
-                        <AlertTitle>Unified Diff 生成失败</AlertTitle>
-                        <AlertDescription>{diffState.error}</AlertDescription>
-                      </Alert>
-                    ) : diffState?.key !== diffKey || diffState.loading || !diffState.file ? (
-                      <Skeleton className="h-[420px] w-full" />
-                    ) : diffState.file.additionLength === 0 &&
-                      diffState.file.deletionLength === 0 ? (
-                      <Empty className="min-h-[420px] border">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <GitCompareArrows />
-                          </EmptyMedia>
-                          <EmptyTitle>没有差异</EmptyTitle>
-                          <EmptyDescription>
-                            当前本地文件与所选云端版本内容一致。
-                          </EmptyDescription>
-                        </EmptyHeader>
-                      </Empty>
-                    ) : (
-                      <div className="overflow-hidden rounded-lg border">
-                        <div className="flex flex-wrap items-center gap-2 border-b bg-muted px-3 py-2">
-                          <Badge variant="outline">
-                            +{diffState.file.additionLength} 行
-                          </Badge>
-                          <Badge variant="outline">
-                            -{diffState.file.deletionLength} 行
-                          </Badge>
-                        </div>
-                        <DiffView
-                          diffFile={diffState.file}
-                          diffViewMode={OPEN_SOURCE_UNIFIED_MODE}
-                          diffViewTheme="light"
-                          diffViewHighlight
-                          diffViewWrap
-                        />
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
+                    <TabsContent value="diff" className="pt-3">
+                      {localContent === null || localContent === undefined ? (
+                        <DiffUnavailable displayPath={formatConfig.displayPath} />
+                      ) : (
+                        <DiffViewer diffState={diffState} diffKey={diffKey} formatLabel={formatConfig.label} />
+                      )}
+                    </TabsContent>
+                  </Tabs>
               ) : (
                 <div className="flex min-h-[420px] items-center justify-center text-sm text-muted-foreground">
                   从左侧选择版本

@@ -13,6 +13,7 @@
 //! 服务端分发到 Pi(对齐 cc-switch)走 Pi 特殊处理(MVP 简化为直接同步)。
 
 use crate::domain::skill::{HarnessId, SyncMethod};
+use crate::infrastructure::fs_utils::copy_dir_recursive;
 use crate::infrastructure::skill_paths::{ensure_dir, ssot_skill_dir};
 use std::path::Path;
 use thiserror::Error;
@@ -31,10 +32,6 @@ pub enum DispatchError {
 pub enum DispatchOutcome {
     /// 同步成功(method 标明实际使用的同步方式)。
     Synced { method: SyncMethod },
-    /// skill 未启用该 harness,跳过。
-    Skipped,
-    /// 同步失败(已记到 state.last_install_error,这里返回错误)。
-    Failed(String),
 }
 
 /// 把 {@code skill_name} 从 SSOT 同步到目标 harness 目录。
@@ -61,7 +58,9 @@ pub fn dispatch_to_harness(
     if dest.is_symlink() {
         if let Ok(existing) = std::fs::read_link(&dest) {
             if existing == ssot {
-                return Ok(DispatchOutcome::Synced { method: SyncMethod::Symlink });
+                return Ok(DispatchOutcome::Synced {
+                    method: SyncMethod::Symlink,
+                });
             }
         }
     }
@@ -96,7 +95,9 @@ pub fn dispatch_to_harness(
             SyncMethod::Copy
         }
     };
-    Ok(DispatchOutcome::Synced { method: used_method })
+    Ok(DispatchOutcome::Synced {
+        method: used_method,
+    })
 }
 
 /// 取消分发:从目标 harness 目录移除该 skill(SSOT 保留)。
@@ -116,30 +117,7 @@ fn replace_with_copy(src: &Path, dest: &Path) -> Result<(), DispatchError> {
     if dest.exists() || dest.is_symlink() {
         remove_path(dest)?;
     }
-    copy_dir_recursive(src, dest)
-}
-
-fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), DispatchError> {
-    std::fs::create_dir_all(dest)?;
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
-        let entry_path = entry.path();
-        let dest_path = dest.join(entry.file_name());
-        let file_type = entry.file_type()?;
-        if file_type.is_dir() {
-            copy_dir_recursive(&entry_path, &dest_path)?;
-        } else if file_type.is_symlink() {
-            // 跟随源 symlink 内容(避免链路)
-            let target = std::fs::read_link(&entry_path)?;
-            #[cfg(unix)]
-            std::os::unix::fs::symlink(&target, &dest_path)?;
-            #[cfg(windows)]
-            std::os::windows::fs::symlink_file(&target, &dest_path)?;
-        } else {
-            std::fs::copy(&entry_path, &dest_path)?;
-        }
-    }
-    Ok(())
+    copy_dir_recursive(src, dest).map_err(DispatchError::Io)
 }
 
 fn remove_path(path: &Path) -> Result<(), DispatchError> {
@@ -181,25 +159,6 @@ mod tests {
         dir
     }
 
-    /// 检测本机 symlink 创建是否可用(Windows 非 Developer Mode 不可用)。
-    fn symlink_available() -> bool {
-        let probe = std::env::temp_dir().join(format!("agents-plus-symlink-probe-{}-{}",
-            std::process::id(), uuid::Uuid::new_v4().simple()));
-        let target = std::env::temp_dir().join(format!("agents-plus-symlink-probe-target-{}-{}",
-            std::process::id(), uuid::Uuid::new_v4().simple()));
-        let _ = std::fs::remove_file(&probe);
-        let _ = std::fs::remove_file(&target);
-        std::fs::write(&target, b"x").unwrap();
-        #[cfg(unix)]
-        let result = std::os::unix::fs::symlink(&target, &probe);
-        #[cfg(windows)]
-        let result = std::os::windows::fs::symlink_file(&target, &probe);
-        let ok = result.is_ok();
-        let _ = std::fs::remove_file(&probe);
-        let _ = std::fs::remove_file(&target);
-        ok
-    }
-
     fn write_skill(home: &Path, name: &str) {
         let dir = ssot_skill_dir(home, name);
         std::fs::create_dir_all(&dir).unwrap();
@@ -210,10 +169,10 @@ mod tests {
     fn dispatch_auto_then_undispatch() {
         let home = tmp_home();
         write_skill(&home, "alpha");
-        let outcome = dispatch_to_harness(&home, "alpha", HarnessId::Codex, SyncMethod::Auto).unwrap();
+        let outcome =
+            dispatch_to_harness(&home, "alpha", HarnessId::Codex, SyncMethod::Auto).unwrap();
         match outcome {
             DispatchOutcome::Synced { .. } => {}
-            other => panic!("expected Synced, got {:?}", other),
         }
         // 目标目录已建立
         let dest = HarnessId::Codex.skills_dir(&home).join("alpha");
@@ -232,8 +191,14 @@ mod tests {
         let home = tmp_home();
         write_skill(&home, "beta");
         dispatch_to_harness(&home, "beta", HarnessId::Claude, SyncMethod::Copy).unwrap();
-        let outcome = dispatch_to_harness(&home, "beta", HarnessId::Claude, SyncMethod::Copy).unwrap();
-        assert!(matches!(outcome, DispatchOutcome::Synced { method: SyncMethod::Copy }));
+        let outcome =
+            dispatch_to_harness(&home, "beta", HarnessId::Claude, SyncMethod::Copy).unwrap();
+        assert!(matches!(
+            outcome,
+            DispatchOutcome::Synced {
+                method: SyncMethod::Copy
+            }
+        ));
         let _ = std::fs::remove_dir_all(&home);
     }
 
@@ -256,7 +221,8 @@ mod tests {
     #[test]
     fn missing_ssot_fails() {
         let home = tmp_home();
-        let err = dispatch_to_harness(&home, "nope", HarnessId::Claude, SyncMethod::Auto).unwrap_err();
+        let err =
+            dispatch_to_harness(&home, "nope", HarnessId::Claude, SyncMethod::Auto).unwrap_err();
         assert!(matches!(err, DispatchError::SsotMissing(_)));
         let _ = std::fs::remove_dir_all(&home);
     }
