@@ -152,11 +152,11 @@ pub fn get_device_identity(app_version: &str) -> Result<DeviceIdentity, String> 
         .or_else(|_| env::var("HOSTNAME"))
         .unwrap_or_else(|_| "这台电脑".to_string());
     let platform = if cfg!(target_os = "windows") {
-        "windows"
+        "WINDOWS"
     } else if cfg!(target_os = "macos") {
-        "macos"
+        "MACOS"
     } else {
-        "linux"
+        "LINUX"
     };
     let identity = DeviceIdentity {
         device_id: Uuid::new_v4().simple().to_string(),

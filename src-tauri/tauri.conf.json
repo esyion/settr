@@ -38,8 +38,18 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["agentsplus"]
+        "schemes": [
+          "agentsplus"
+        ]
       }
+    },
+    "updater": {
+      "active": false,
+      "endpoints": [
+        "https://your-update-server.com/update/{{target}}/{{current_version}}"
+      ],
+      "dialog": true,
+      "pubkey": "your-public-key-here"
     }
   }
 }
