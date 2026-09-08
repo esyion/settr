@@ -27,7 +27,11 @@ export default function OrganizationSkillsPage() {
           </button>
         </div>
       ) : (
-        <SkillList items={org.skills} onRefreshOverride={org.refresh} />
+        <SkillList
+          items={org.skills}
+          loading={org.loading}
+          onRefreshOverride={org.refresh}
+        />
       )}
     </div>
   );

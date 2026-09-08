@@ -28,26 +28,22 @@ import { SkillRow, HarnessChip, readableError } from "@/features/skills/componen
 import { useSkillStore } from "@/features/skills/store/skill-store";
 import { usePendingUpdates } from "@/features/skills/hooks/use-pending-updates";
 /**
- * Skill 列表(行/表格式,非卡片)。
- * 布局对齐 cc-switch:
- *  - 顶部:左 "已安装" + 右动作(从 ZIP 安装 / 新建);次行:harness 计数 chips + 检查更新
- *  - 主体:每行一个 skill(左 name + 来源 + 描述,右 7 个 harness Toggle + 编辑/删除)
- *  - harness 切换:对齐 cc-switch 的 AppToggleGroup;Toggle 来自 shadcn/ui
- *
+ * Skill 列表(行/表格式):顶部动作 + harness 计数 chips + 行内 7 harness Toggle。
  * 双态数据源(规格 §6.2):默认读订阅 store(个人态);传入 items/onRefreshOverride
- * 时切换为组织态数据源(useOrgSkills),其余渲染/toggle 逻辑两态共用。
+ * 切换为组织态(useOrgSkills),其余渲染/toggle 逻辑两态共用。
  */
 export function SkillList(props: {
   /** 传入时覆盖 store 数据(组织态数据源)。 */
   items?: Skill[];
   /** 传入时覆盖列表刷新动作(组织态用 useOrgSkills.refresh)。 */
   onRefreshOverride?: () => void | Promise<void>;
+  /** 传入(组织态)时作为列表 loading 态,避免首屏闪烁空态文案。 */
+  loading?: boolean;
 }) {
   const router = useRouter();
-  // 列表数据/请求态迁移到 useSkillStore：列表页、详情页、顶栏角标共享，返回列表不丢数据。
-  // hooks 不能条件调用:store 订阅始终执行,再由 props 决定是否采用。
+  // 列表数据/请求态在 store:列表页、详情页、顶栏角标共享;hooks 无条件调用,props 仅决定取值。
   const storeSkills = useSkillStore((s) => s.skillList);
-  const loading = useSkillStore((s) => s.listLoading);
+  const storeLoading = useSkillStore((s) => s.listLoading);
   const error = useSkillStore((s) => s.listError);
   const setSkillList = useSkillStore((s) => s.setSkillList);
   const setListLoading = useSkillStore((s) => s.setListLoading);
@@ -61,8 +57,9 @@ export function SkillList(props: {
   const [localState, setLocalState] = useState<LocalState>({});
   const [harnessFilter, setHarnessFilter] = useState<HarnessKey | "all">("all");
   const [toggling, setToggling] = useState<Record<string, boolean>>({});
-  // 组织态传入 items 时覆盖 store 数据;两态共用后续渲染/过滤逻辑
+  // 组织态传入 items/loading 时覆盖 store 数据;两态共用后续渲染/过滤逻辑
   const skills = props.items ?? storeSkills;
+  const loading = props.items !== undefined ? (props.loading ?? storeLoading) : storeLoading;
 
   const refresh = useCallback(async () => {
     setListLoading(true);
@@ -72,8 +69,7 @@ export function SkillList(props: {
         // 组织态:列表刷新走 useOrgSkills.refresh
         await props.onRefreshOverride();
       } else {
-        // 个人态:订阅列表 = 我的创建 ∪ 我的订阅 ∪ 组织分发(source 字段区分来源),
-        // 是原 personal 浏览列表的严格超集;搜索在本地过滤,不再走服务端 q 参数。
+        // 个人态:订阅列表(创建∪订阅∪组织分发);搜索本地过滤
         const result = await api.listSkillSubscriptions();
         setSkillList(result);
       }
@@ -90,16 +86,16 @@ export function SkillList(props: {
     } finally {
       setListLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setSkillList, setListLoading, setListError]);
+  }, [props.onRefreshOverride, setSkillList, setListLoading, setListError]);
 
-  // 进入页面时拉一次首屏数据;refresh 内部状态变更走 then() 链而非同步 setState。
+  // 进入页面时拉一次首屏数据(个人态);组织态由 useOrgSkills 自行首拉,避免重复请求。
   useEffect(() => {
+    if (props.onRefreshOverride) return;
     const timer = setTimeout(() => {
       void Promise.resolve().then(() => refresh());
     }, 300);
     return () => clearTimeout(timer);
-  }, [refresh]);
+  }, [refresh, props.onRefreshOverride]);
 
   /** 确认对话框点击删除后执行,成功后刷新列表。 */
   const handleDelete = async () => {
@@ -299,4 +295,3 @@ export function SkillList(props: {
   );
 }
 
-export { readableError } from "@/features/skills/components/skill-row";
