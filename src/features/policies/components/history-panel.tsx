@@ -26,6 +26,9 @@ export function HistoryCard({ data }: { data: PoliciesDataApi }) {
     null,
   );
 
+  /**
+   * 对话框提交处理:分发成功后关闭;失败保持打开(toast 已由数据中枢提示)。
+   */
   const handleDistributeSubmit = async (input: {
     scopeType: "ORGANIZATION" | "TEAM" | "MEMBER";
     teamId?: string;

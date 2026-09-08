@@ -55,7 +55,7 @@ export const policiesApi = {
     api.listPolicyDistributions(orgId),
   withdrawPolicyDistribution: (orgId: string, distributionId: string) =>
     api.withdrawPolicyDistribution(orgId, distributionId),
-  /** 分发已审核通过的规范版本(APPROVED;后端仅允许分发未 ACTIVE 的版本)。 */
+  /** 分发已审核通过(APPROVED)的规范版本;分发后版本转 ACTIVE。 */
   distributePolicyVersion: (
     orgId: string,
     input: {

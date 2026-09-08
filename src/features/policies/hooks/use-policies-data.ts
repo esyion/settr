@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiClientError } from "@/lib/api-client";
 import { useWorkspaceStore } from "@/features/context/store";
 import { toast } from "sonner";
@@ -24,7 +24,17 @@ function readableError(error: unknown, fallback: string): string {
  */
 export function usePoliciesData(): PoliciesDataApi {
   const organizationId = useWorkspaceStore((s) => s.organizationId);
-  const hasPermission = useWorkspaceStore((s) => s.hasPermission);
+  // 直接在 selector 内从 myPermissions 计算(org 级或任一 team 级命中即可见),
+  // 保证权限落地/切换组织时触发重渲染;目标级权限仍由后端逐请求裁决。
+  // 注:store.hasPermission 引用恒稳,订阅它不会触发重渲染,不可用在此处。
+  const canDistributePolicy = useWorkspaceStore((s) => {
+    const my = s.myPermissions;
+    if (!my) return false;
+    return (
+      my.orgLevel.includes("policy:distribute") ||
+      my.teamLevel.some((t) => t.permissions.includes("policy:distribute"))
+    );
+  });
   const [pendingPolicies, setPendingPolicies] = useState<PolicyReviewRequest[]>(
     [],
   );
@@ -35,6 +45,11 @@ export function usePoliciesData(): PoliciesDataApi {
     useState<EffectivePolicies | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // 竞态守卫:响应落地时组织已切换则丢弃,防止旧组织数据串台
+  const organizationIdRef = useRef(organizationId);
+  useEffect(() => {
+    organizationIdRef.current = organizationId;
+  }, [organizationId]);
 
   /** 首屏/刷新共用的加载函数;无组织时清空本地状态。 */
   const reload = useCallback(async () => {
@@ -46,21 +61,24 @@ export function usePoliciesData(): PoliciesDataApi {
       setEffectivePolicies(null);
       return;
     }
+    const requestOrgId = organizationId;
     setError(null);
     try {
       const [pending, agent, claude, dists, effective] = await Promise.all([
-        policiesApi.listPolicyReviewRequests(organizationId),
-        policiesApi.listPolicyHistory(organizationId, "AGENT"),
-        policiesApi.listPolicyHistory(organizationId, "CLAUDE"),
-        policiesApi.listPolicyDistributions(organizationId),
-        policiesApi.getEffectivePolicies(organizationId),
+        policiesApi.listPolicyReviewRequests(requestOrgId),
+        policiesApi.listPolicyHistory(requestOrgId, "AGENT"),
+        policiesApi.listPolicyHistory(requestOrgId, "CLAUDE"),
+        policiesApi.listPolicyDistributions(requestOrgId),
+        policiesApi.getEffectivePolicies(requestOrgId),
       ]);
+      if (organizationIdRef.current !== requestOrgId) return;
       setPendingPolicies(pending);
       setAgentVersions(agent);
       setClaudeVersions(claude);
       setDistributions(dists);
       setEffectivePolicies(effective);
     } catch (caught) {
+      if (organizationIdRef.current !== requestOrgId) return;
       setError(readableError(caught, "加载政策失败"));
     }
   }, [organizationId]);
@@ -137,6 +155,10 @@ export function usePoliciesData(): PoliciesDataApi {
     [organizationId],
   );
 
+  /**
+   * 分发 APPROVED 版本;成功后刷新列表,失败 toast 后 rethrow
+   * (对话框保持打开供重试)。
+   */
   const distributePolicyVersion = useCallback(
     async (input: {
       versionId: string;
@@ -169,7 +191,7 @@ export function usePoliciesData(): PoliciesDataApi {
     organizationId: organizationId ?? "",
     error,
     busy,
-    canDistributePolicy: hasPermission("policy:distribute"),
+    canDistributePolicy,
     submitPolicyChange,
     reviewPolicyChange,
     withdrawDistribution,

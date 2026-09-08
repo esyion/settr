@@ -100,6 +100,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           organizationId: org.id,
           organizationName: org.name,
           scope: "organization",
+          // 先清空,避免切换窗口期沿用上一组织的权限判定(宁少勿多)
+          myPermissions: null,
         });
         // 切换组织即重拉权限(R4:不做推送失效,不做页面级重拉)
         void get().refreshMyPermissions(org.id);

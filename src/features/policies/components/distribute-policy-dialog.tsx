@@ -30,6 +30,9 @@ export function DistributePolicyDialog(props: DistributePolicyDialogProps) {
   useEffect(() => {
     if (!props.open || !props.organizationId) return;
     let cancelled = false;
+    // 打开/换组织时先清空,避免展示上一组织的目标列表
+    setTeams([]);
+    setMembers([]);
     setTargetsError(false);
     void (async () => {
       try {
@@ -58,6 +61,11 @@ export function DistributePolicyDialog(props: DistributePolicyDialogProps) {
       open={props.open}
       title="分发规范版本"
       busy={props.busy}
+      warning={
+        targetsError
+          ? "目标列表加载失败,暂只能分发到整个组织"
+          : undefined
+      }
       teams={teams}
       members={members}
       onSubmit={props.onSubmit}

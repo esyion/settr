@@ -25,6 +25,8 @@ export interface DistributeDialogProps {
   open: boolean;
   title: string;
   busy: boolean;
+  /** 可选警示文案(如目标列表加载失败时的降级提示)。 */
+  warning?: string;
   /** 可选团队列表;为空时范围下拉不出现"团队"项。 */
   teams: { id: string; name: string }[];
   /** 可选成员列表;为空时范围下拉不出现"单个成员"项。 */
@@ -66,6 +68,9 @@ export function DistributeDialog(props: DistributeDialogProps) {
         <DialogHeader>
           <DialogTitle>{props.title}</DialogTitle>
           <DialogDescription>选择分发范围与目标对象。</DialogDescription>
+          {props.warning && (
+            <p className="text-xs text-destructive">{props.warning}</p>
+          )}
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm">
