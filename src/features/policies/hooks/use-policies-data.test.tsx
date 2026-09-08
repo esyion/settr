@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor, act } from "@testing-library/react";
 import { usePoliciesData } from "@/features/policies/hooks/use-policies-data";
 import { useWorkspaceStore } from "@/features/context/store";
 import { api } from "@/lib/api-client";
@@ -10,6 +10,7 @@ vi.mock("@/lib/api-client", () => ({
     listPolicyHistory: vi.fn(),
     listPolicyDistributions: vi.fn(),
     getEffectivePolicies: vi.fn(),
+    distributePolicyVersion: vi.fn(),
   },
   ApiClientError: class extends Error {},
 }));
@@ -48,5 +49,38 @@ describe("usePoliciesData", () => {
     await waitFor(() => {
       expect(api.getEffectivePolicies).toHaveBeenCalledWith("org-1");
     });
+  });
+
+  it("distributePolicyVersion 提交后刷新分发列表", async () => {
+    (api.listPolicyReviewRequests as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (api.listPolicyHistory as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (api.listPolicyDistributions as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (api.getEffectivePolicies as ReturnType<typeof vi.fn>).mockResolvedValue({
+      agent: null,
+      claude: null,
+    });
+    (api.distributePolicyVersion as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    useWorkspaceStore.getState().setOrganizations([
+      { id: "org-1", name: "Org 1", ownerUserId: "u1" },
+    ]);
+    useWorkspaceStore.getState().setOrganization("org-1");
+    const { result } = renderHook(() => usePoliciesData());
+    await waitFor(() => {
+      expect(api.getEffectivePolicies).toHaveBeenCalledWith("org-1");
+    });
+    await act(() =>
+      result.current.distributePolicyVersion({
+        versionId: "v1",
+        scopeType: "TEAM",
+        teamId: "100",
+      }),
+    );
+    expect(api.distributePolicyVersion).toHaveBeenCalledWith("org-1", {
+      versionId: "v1",
+      scopeType: "TEAM",
+      teamId: "100",
+    });
+    // 首载 + 分发成功后的刷新
+    expect(api.listPolicyDistributions).toHaveBeenCalledTimes(2);
   });
 });

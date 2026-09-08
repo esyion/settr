@@ -24,6 +24,7 @@ function readableError(error: unknown, fallback: string): string {
  */
 export function usePoliciesData(): PoliciesDataApi {
   const organizationId = useWorkspaceStore((s) => s.organizationId);
+  const hasPermission = useWorkspaceStore((s) => s.hasPermission);
   const [pendingPolicies, setPendingPolicies] = useState<PolicyReviewRequest[]>(
     [],
   );
@@ -35,41 +36,38 @@ export function usePoliciesData(): PoliciesDataApi {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  useEffect(() => {
+  /** 首屏/刷新共用的加载函数;无组织时清空本地状态。 */
+  const reload = useCallback(async () => {
     if (!organizationId) {
-      void Promise.resolve().then(() => {
-        setPendingPolicies([]);
-        setAgentVersions([]);
-        setClaudeVersions([]);
-        setDistributions([]);
-        setEffectivePolicies(null);
-      });
+      setPendingPolicies([]);
+      setAgentVersions([]);
+      setClaudeVersions([]);
+      setDistributions([]);
+      setEffectivePolicies(null);
       return;
     }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const [pending, agent, claude, dists, effective] = await Promise.all([
-          policiesApi.listPolicyReviewRequests(organizationId),
-          policiesApi.listPolicyHistory(organizationId, "AGENT"),
-          policiesApi.listPolicyHistory(organizationId, "CLAUDE"),
-          policiesApi.listPolicyDistributions(organizationId),
-          policiesApi.getEffectivePolicies(organizationId),
-        ]);
-        if (cancelled) return;
-        setPendingPolicies(pending);
-        setAgentVersions(agent);
-        setClaudeVersions(claude);
-        setDistributions(dists);
-        setEffectivePolicies(effective);
-      } catch (caught) {
-        if (!cancelled) setError(readableError(caught, "加载政策失败"));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    setError(null);
+    try {
+      const [pending, agent, claude, dists, effective] = await Promise.all([
+        policiesApi.listPolicyReviewRequests(organizationId),
+        policiesApi.listPolicyHistory(organizationId, "AGENT"),
+        policiesApi.listPolicyHistory(organizationId, "CLAUDE"),
+        policiesApi.listPolicyDistributions(organizationId),
+        policiesApi.getEffectivePolicies(organizationId),
+      ]);
+      setPendingPolicies(pending);
+      setAgentVersions(agent);
+      setClaudeVersions(claude);
+      setDistributions(dists);
+      setEffectivePolicies(effective);
+    } catch (caught) {
+      setError(readableError(caught, "加载政策失败"));
+    }
   }, [organizationId]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   const submitPolicyChange = useCallback(
     async (input: {
@@ -139,6 +137,29 @@ export function usePoliciesData(): PoliciesDataApi {
     [organizationId],
   );
 
+  const distributePolicyVersion = useCallback(
+    async (input: {
+      versionId: string;
+      scopeType: "ORGANIZATION" | "TEAM" | "MEMBER";
+      teamId?: string;
+      memberId?: string;
+    }) => {
+      if (!organizationId) return;
+      setBusy("分发政策");
+      try {
+        await policiesApi.distributePolicyVersion(organizationId, input);
+        toast.success("已分发");
+        await reload();
+      } catch (caught) {
+        toast.error(readableError(caught, "分发失败"));
+        throw caught;
+      } finally {
+        setBusy(null);
+      }
+    },
+    [organizationId, reload],
+  );
+
   return {
     pendingPolicies,
     agentVersions,
@@ -146,12 +167,12 @@ export function usePoliciesData(): PoliciesDataApi {
     distributions,
     effectivePolicies,
     organizationId: organizationId ?? "",
-    teamId: "",
-    projectId: "",
     error,
     busy,
+    canDistributePolicy: hasPermission("policy:distribute"),
     submitPolicyChange,
     reviewPolicyChange,
     withdrawDistribution,
+    distributePolicyVersion,
   };
 }

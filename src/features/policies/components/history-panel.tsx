@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,13 +10,39 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  DistributePolicyDialog,
+} from "@/features/policies/components/distribute-policy-dialog";
+import type { PolicyVersion } from "@/lib/contracts";
 import type { PoliciesDataApi } from "@/features/policies/types";
 
 /**
  * 政策历史面板：挂载时自动加载 AGENT/CLAUDE 历史，
- * 用 Tabs 分开显示。版本列表按时间倒序展示。
+ * 用 Tabs 分开显示。版本列表按时间倒序展示;
+ * APPROVED 版本对拥有 policy:distribute 权限的主体提供"分发"入口。
  */
 export function HistoryCard({ data }: { data: PoliciesDataApi }) {
+  const [distributeTarget, setDistributeTarget] = useState<PolicyVersion | null>(
+    null,
+  );
+
+  const handleDistributeSubmit = async (input: {
+    scopeType: "ORGANIZATION" | "TEAM" | "MEMBER";
+    teamId?: string;
+    memberId?: string;
+  }) => {
+    if (!distributeTarget) return;
+    try {
+      await data.distributePolicyVersion({
+        versionId: distributeTarget.id,
+        ...input,
+      });
+      setDistributeTarget(null);
+    } catch {
+      // 失败 toast 已由数据中枢提示;保持对话框打开供重试
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -28,30 +56,50 @@ export function HistoryCard({ data }: { data: PoliciesDataApi }) {
             <TabsTrigger value="CLAUDE">CLAUDE</TabsTrigger>
           </TabsList>
           <TabsContent value="AGENT" className="mt-3">
-            <VersionList items={data.agentVersions} />
+            <VersionList
+              items={data.agentVersions}
+              canDistribute={data.canDistributePolicy}
+              disabled={data.busy !== null}
+              onDistribute={setDistributeTarget}
+            />
           </TabsContent>
           <TabsContent value="CLAUDE" className="mt-3">
-            <VersionList items={data.claudeVersions} />
+            <VersionList
+              items={data.claudeVersions}
+              canDistribute={data.canDistributePolicy}
+              disabled={data.busy !== null}
+              onDistribute={setDistributeTarget}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>
+      <DistributePolicyDialog
+        open={distributeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDistributeTarget(null);
+        }}
+        organizationId={data.organizationId}
+        busy={data.busy !== null}
+        onSubmit={handleDistributeSubmit}
+      />
     </Card>
   );
 }
 
 /**
- * 版本列表子组件：复用，避免重复代码。
+ * 版本列表子组件:复用,避免重复代码;
+ * canDistribute 时对 APPROVED 版本渲染"分发"按钮(后端仅允许分发 APPROVED 版本)。
  */
 function VersionList({
   items,
+  canDistribute,
+  disabled,
+  onDistribute,
 }: {
-  items: ReadonlyArray<{
-    id: string;
-    versionNo: number;
-    content: string;
-    sha256: string;
-    status: string;
-  }>;
+  items: ReadonlyArray<PolicyVersion>;
+  canDistribute: boolean;
+  disabled: boolean;
+  onDistribute: (version: PolicyVersion) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -66,10 +114,25 @@ function VersionList({
           className="rounded-md border p-3 text-sm"
         >
           <div className="flex items-center justify-between">
-            <span className="font-medium">v{v.versionNo}</span>
-            <code className="font-mono text-xs text-muted-foreground">
-              {v.sha256.slice(0, 12)}
-            </code>
+            <span className="font-medium">
+              v{v.versionNo}
+              <span className="ml-2 text-xs text-muted-foreground">{v.status}</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <code className="font-mono text-xs text-muted-foreground">
+                {v.sha256.slice(0, 12)}
+              </code>
+              {canDistribute && v.status === "APPROVED" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={disabled}
+                  onClick={() => onDistribute(v)}
+                >
+                  分发
+                </Button>
+              )}
+            </span>
           </div>
           <pre className="mt-2 max-h-32 overflow-auto rounded-md bg-muted p-2 text-xs">
             {v.content}

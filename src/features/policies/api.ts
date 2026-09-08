@@ -55,4 +55,14 @@ export const policiesApi = {
     api.listPolicyDistributions(orgId),
   withdrawPolicyDistribution: (orgId: string, distributionId: string) =>
     api.withdrawPolicyDistribution(orgId, distributionId),
+  /** 分发已审核通过的规范版本(APPROVED;后端仅允许分发未 ACTIVE 的版本)。 */
+  distributePolicyVersion: (
+    orgId: string,
+    input: {
+      versionId: string;
+      scopeType: "ORGANIZATION" | "TEAM" | "MEMBER";
+      teamId?: string;
+      memberId?: string;
+    },
+  ) => api.distributePolicyVersion(orgId, input),
 };

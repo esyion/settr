@@ -24,10 +24,10 @@ export interface PoliciesDataApi {
   distributions: PolicyDistribution[];
   effectivePolicies: EffectivePolicies | null;
   organizationId: string;
-  teamId: string;
-  projectId: string;
   error: string | null;
   busy: string | null;
+  /** 当前主体是否拥有 policy:distribute 权限(分发按钮显隐依据)。 */
+  canDistributePolicy: boolean;
   submitPolicyChange: (input: {
     policyType: "AGENT" | "CLAUDE";
     content: string;
@@ -38,4 +38,11 @@ export interface PoliciesDataApi {
     decision: "APPROVED" | "REJECTED",
   ) => Promise<void>;
   withdrawDistribution: (distributionId: string) => Promise<void>;
+  /** 分发 APPROVED 版本;失败抛出(对话框保持打开,toast 已提示)。 */
+  distributePolicyVersion: (input: {
+    versionId: string;
+    scopeType: "ORGANIZATION" | "TEAM" | "MEMBER";
+    teamId?: string;
+    memberId?: string;
+  }) => Promise<void>;
 }
