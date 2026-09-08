@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiClientError } from "@/lib/api-client";
 import type { CreateSkillRequest } from "@/lib/contracts";
+import { useOrgBinding } from "@/features/skills/hooks/use-org-binding";
 import { toast } from "sonner";
 
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
@@ -30,6 +31,8 @@ export function CreateSkillDialog({
   const [displayName, setDisplayName] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // 组织态自动绑定归属(规格 §6.2);个人态为 undefined,后端缺省 PERSONAL
+  const orgBinding = useOrgBinding();
 
   const reset = () => {
     setName("");
@@ -51,6 +54,7 @@ export function CreateSkillDialog({
       displayName: displayName.trim() || null,
       description: description.trim() || null,
       sourceType: "local",
+      ...orgBinding,
     };
     setSubmitting(true);
     try {

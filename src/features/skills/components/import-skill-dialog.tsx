@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, ApiClientError } from "@/lib/api-client";
+import type { SkillOrgBinding } from "@/lib/api-skill";
+import { useOrgBinding } from "@/features/skills/hooks/use-org-binding";
 import { toast } from "sonner";
 
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
@@ -28,6 +30,8 @@ export function ImportSkillDialog({
 }) {
   const [tab, setTab] = useState<"github" | "skills-sh" | "zip">("github");
   const [submitting, setSubmitting] = useState(false);
+  // 组织态自动绑定归属(规格 §6.2);个人态为 undefined
+  const orgBinding = useOrgBinding();
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!submitting) onOpenChange(v); }}>
@@ -44,6 +48,7 @@ export function ImportSkillDialog({
           </TabsList>
           <TabsContent value="github">
             <GithubForm
+              binding={orgBinding}
               submitting={submitting}
               setSubmitting={setSubmitting}
               onDone={onImported}
@@ -52,6 +57,7 @@ export function ImportSkillDialog({
           </TabsContent>
           <TabsContent value="skills-sh">
             <SkillsShForm
+              binding={orgBinding}
               submitting={submitting}
               setSubmitting={setSubmitting}
               onDone={onImported}
@@ -60,6 +66,7 @@ export function ImportSkillDialog({
           </TabsContent>
           <TabsContent value="zip">
             <ZipForm
+              binding={orgBinding}
               submitting={submitting}
               setSubmitting={setSubmitting}
               onDone={onImported}
@@ -73,8 +80,9 @@ export function ImportSkillDialog({
 }
 
 function GithubForm({
-  submitting, setSubmitting, onDone, onClose,
+  binding, submitting, setSubmitting, onDone, onClose,
 }: {
+  binding?: SkillOrgBinding;
   submitting: boolean; setSubmitting: (b: boolean) => void;
   onDone: () => void; onClose: () => void;
 }) {
@@ -87,7 +95,7 @@ function GithubForm({
     }
     setSubmitting(true);
     try {
-      await api.importSkillFromGithub({ repo, ref: ref || undefined });
+      await api.importSkillFromGithub({ repo, ref: ref || undefined, ...binding });
       toast.success("GitHub 导入成功");
       onDone();
     } catch (err) {
@@ -118,8 +126,9 @@ function GithubForm({
 }
 
 function SkillsShForm({
-  submitting, setSubmitting, onDone, onClose,
+  binding, submitting, setSubmitting, onDone, onClose,
 }: {
+  binding?: SkillOrgBinding;
   submitting: boolean; setSubmitting: (b: boolean) => void;
   onDone: () => void; onClose: () => void;
 }) {
@@ -128,7 +137,7 @@ function SkillsShForm({
     if (!slug.trim()) { toast.error("请填写 slug"); return; }
     setSubmitting(true);
     try {
-      await api.importSkillFromSkillsSh({ slug: slug.trim() });
+      await api.importSkillFromSkillsSh({ slug: slug.trim(), ...binding });
       toast.success("skills.sh 导入成功");
       onDone();
     } catch (err) {
@@ -155,8 +164,9 @@ function SkillsShForm({
 }
 
 function ZipForm({
-  submitting, setSubmitting, onDone, onClose,
+  binding, submitting, setSubmitting, onDone, onClose,
 }: {
+  binding?: SkillOrgBinding;
   submitting: boolean; setSubmitting: (b: boolean) => void;
   onDone: () => void; onClose: () => void;
 }) {
@@ -170,7 +180,7 @@ function ZipForm({
     }
     setSubmitting(true);
     try {
-      await api.importSkillFromZip(file, name);
+      await api.importSkillFromZip(file, name, binding);
       toast.success("ZIP 导入成功");
       setName(""); setFile(null);
       onDone();

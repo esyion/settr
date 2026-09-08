@@ -64,22 +64,38 @@ async function publishSkillVersionMultipart(
   return parseEnvelope<SkillVersion>(response);
 }
 
-/** 上传 ZIP 导入 skill(multipart)。 */
-async function importSkillZipMultipart(file: File, name: string): Promise<Skill> {
+/** 导入请求可选携带的组织归属(组织空间导入时注入,规格 §6.2)。 */
+export interface SkillOrgBinding {
+  ownerScope: "ORG";
+  orgId: string;
+}
+
+/** 上传 ZIP 导入 skill(multipart);binding 传入时附加组织归属表单字段。 */
+async function importSkillZipMultipart(
+  file: File,
+  name: string,
+  binding?: SkillOrgBinding,
+): Promise<Skill> {
   const session = await loadSession();
   if (!session) {
     throw new ApiClientError("登录会话不存在或无法恢复", 40100, 401, null, null);
   }
-  const namePart: NativeApiUploadPart = {
-    name: "name",
+  const textPart = (partName: string, value: string): NativeApiUploadPart => ({
+    name: partName,
     contentType: "text/plain; charset=utf-8",
-    data: Array.from(new TextEncoder().encode(name)),
-  };
+    data: Array.from(new TextEncoder().encode(value)),
+  });
+  const namePart = textPart("name", name);
   const zipPart = await fileToUploadPart(file, "zip", "application/zip");
+  const parts: NativeApiUploadPart[] = [zipPart, namePart];
+  if (binding) {
+    parts.push(textPart("ownerScope", binding.ownerScope));
+    parts.push(textPart("orgId", binding.orgId));
+  }
   const response = await nativeApiUpload({
     baseUrl: await getApiBaseUrl(),
     path: "/api/v1/skills/import/zip",
-    parts: [zipPart, namePart],
+    parts,
     accessToken: session.accessToken,
   });
   return parseEnvelope<Skill>(response);
@@ -136,12 +152,18 @@ export const skillApi = {
   publishSkillVersion: (skillId: string, file: File, meta: { version: string; changelog?: string }) =>
     publishSkillVersionMultipart(skillId, file, meta),
 
-  importSkillFromGithub: (input: { repo: string; ref?: string; path?: string }) =>
+  importSkillFromGithub: (input: {
+    repo: string;
+    ref?: string;
+    path?: string;
+    ownerScope?: "ORG";
+    orgId?: string;
+  }) =>
     request<Skill>("/api/v1/skills/import/github", { method: "POST", body: input }),
-  importSkillFromSkillsSh: (input: { slug: string }) =>
+  importSkillFromSkillsSh: (input: { slug: string; ownerScope?: "ORG"; orgId?: string }) =>
     request<Skill>("/api/v1/skills/import/skills-sh", { method: "POST", body: input }),
-  importSkillFromZip: (file: File, name: string) =>
-    importSkillZipMultipart(file, name),
+  importSkillFromZip: (file: File, name: string, binding?: SkillOrgBinding) =>
+    importSkillZipMultipart(file, name, binding),
 
   listSkillSubscriptions: () =>
     request<Skill[]>("/api/v1/skills/subscriptions"),

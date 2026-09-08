@@ -211,6 +211,10 @@ export interface CreateSkillRequest {
     sourceType: SkillSourceType;
     sourceUrl?: string | null;
     sourceRef?: string | null;
+    /** 归属范围:缺省 PERSONAL;组织空间创建/导入时为 ORG(规格 §6.2)。 */
+    ownerScope?: "PERSONAL" | "ORG";
+    /** ownerScope=ORG 时的目标组织 ID(字符串雪花)。 */
+    orgId?: string;
 }
 
 /** 更新 skill 元数据请求体。 */
