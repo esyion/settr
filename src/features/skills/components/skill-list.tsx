@@ -28,9 +28,9 @@ import { SkillRow, HarnessChip, readableError } from "@/features/skills/componen
 import { useSkillStore } from "@/features/skills/store/skill-store";
 import { usePendingUpdates } from "@/features/skills/hooks/use-pending-updates";
 /**
- * Skill 列表(行/表格式):顶部动作 + harness 计数 chips + 行内 7 harness Toggle。
- * 双态数据源(规格 §6.2):默认读订阅 store(个人态);传入 items/onRefreshOverride
- * 切换为组织态(useOrgSkills),其余渲染/toggle 逻辑两态共用。
+ * Skill 列表:顶部动作 + harness chips + 行内 7 harness Toggle。
+ * 双态(规格 §6.2):默认读订阅 store(个人态);传入 items/onRefreshOverride/onDistribute
+ * 切换为组织态(useOrgSkills),渲染/toggle 逻辑两态共用。
  */
 export function SkillList(props: {
   /** 传入时覆盖 store 数据(组织态数据源)。 */
@@ -39,6 +39,8 @@ export function SkillList(props: {
   onRefreshOverride?: () => void | Promise<void>;
   /** 传入(组织态)时作为列表 loading 态,避免首屏闪烁空态文案。 */
   loading?: boolean;
+  /** 传入(组织态 + skill:distribute 权限)时,行内渲染"分发"动作。 */
+  onDistribute?: (skill: Skill) => void;
 }) {
   const router = useRouter();
   // 列表数据/请求态在 store:列表页、详情页、顶栏角标共享;hooks 无条件调用,props 仅决定取值。
@@ -66,12 +68,10 @@ export function SkillList(props: {
     setListError(null);
     try {
       if (props.onRefreshOverride) {
-        // 组织态:列表刷新走 useOrgSkills.refresh
-        await props.onRefreshOverride();
+        await props.onRefreshOverride(); // 组织态:刷新走 useOrgSkills
       } else {
         // 个人态:订阅列表(创建∪订阅∪组织分发);搜索本地过滤
-        const result = await api.listSkillSubscriptions();
-        setSkillList(result);
+        setSkillList(await api.listSkillSubscriptions());
       }
       try {
         if (typeof window !== "undefined") {
@@ -88,7 +88,7 @@ export function SkillList(props: {
     }
   }, [props.onRefreshOverride, setSkillList, setListLoading, setListError]);
 
-  // 进入页面时拉一次首屏数据(个人态);组织态由 useOrgSkills 自行首拉,避免重复请求。
+  // 首屏拉取仅个人态;组织态由 useOrgSkills 首拉避免重复请求。
   useEffect(() => {
     if (props.onRefreshOverride) return;
     const timer = setTimeout(() => {
@@ -97,7 +97,7 @@ export function SkillList(props: {
     return () => clearTimeout(timer);
   }, [refresh, props.onRefreshOverride]);
 
-  /** 确认对话框点击删除后执行,成功后刷新列表。 */
+  /** 确认删除后执行,成功后刷新列表与待更新角标。 */
   const handleDelete = async () => {
     if (!pendingDelete) return;
     setDeleting(true);
@@ -260,6 +260,9 @@ export function SkillList(props: {
                 }
                 onOpen={() => router.push(`/skills?id=${skill.id}`)}
                 onDelete={() => setPendingDelete(skill)}
+                onDistribute={
+                  props.onDistribute ? () => props.onDistribute?.(skill) : undefined
+                }
               />
             ))}
           </ul>

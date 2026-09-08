@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Toggle } from "@/components/ui/toggle";
-import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Share2, Trash2 } from "lucide-react";
 import { HARNESS_LIST } from "@/features/skills/skill-harness";
 import { Button } from "@/components/ui/button";
 import type { Skill } from "@/lib/contracts";
@@ -50,6 +50,7 @@ export function SkillRow({
   onToggleHarness,
   onOpen,
   onDelete,
+  onDistribute,
 }: {
   skill: Skill;
   enabledHarnesses: Set<string>;
@@ -57,6 +58,8 @@ export function SkillRow({
   onToggleHarness: (harness: HarnessKey, enabled: boolean) => void;
   onOpen: () => void;
   onDelete: () => void;
+  /** 提供时(组织态 + skill:distribute 权限)渲染行内"分发"动作。 */
+  onDistribute?: () => void;
 }) {
   const sourceTag = sourceTypeLabel(skill.sourceType);
   return (
@@ -139,6 +142,22 @@ export function SkillRow({
           })}
         </div>
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          {onDistribute && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={onDistribute}
+                  aria-label="分发"
+                >
+                  <Share2 />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">分发</TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

@@ -1,0 +1,118 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { api, ApiClientError } from "@/lib/api-client";
+import type { SkillDistribution } from "@/lib/api-skill";
+
+export interface OrgDistributionCardProps {
+  orgId: string;
+  /** 是否显示撤回动作(由 skill:distribute 权限决定)。 */
+  canWithdraw: boolean;
+}
+
+/**
+ * 组织 skill 分发记录卡片:列出活跃分发并支持撤回。
+ * 五态覆盖:loading/success/empty/error/retry。
+ */
+export function OrgDistributionCard({ orgId, canWithdraw }: OrgDistributionCardProps) {
+  const [items, setItems] = useState<SkillDistribution[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setItems(await api.listSkillDistributions(orgId));
+    } catch (caught) {
+      setError(
+        caught instanceof ApiClientError
+          ? caught.message
+          : caught instanceof Error
+            ? caught.message
+            : String(caught),
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  /** 撤回一条分发,成功后刷新列表;失败展示错误供重试。 */
+  const handleWithdraw = async (id: string) => {
+    setWithdrawing(id);
+    try {
+      await api.withdrawSkillDistribution(orgId, id);
+      await refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setWithdrawing(null);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>组织分发</CardTitle>
+        <CardDescription>已分发到组织/团队/成员的 skill 与撤回操作</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading && <p className="text-sm text-muted-foreground">加载中…</p>}
+        {!loading && error && (
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-sm text-destructive">{error}</p>
+            <button className="text-sm underline" onClick={() => void refresh()}>
+              重试
+            </button>
+          </div>
+        )}
+        {!loading && !error && items.length === 0 && (
+          <p className="text-sm text-muted-foreground">暂无分发</p>
+        )}
+        {!loading && !error && items.length > 0 && (
+          <ul className="space-y-2">
+            {items.map((d) => (
+              <li
+                key={d.id}
+                className="flex items-center justify-between rounded-md border p-3 text-sm"
+              >
+                <div>
+                  <p className="font-medium">
+                    {d.scopeType}
+                    {d.teamId ? ` · team ${d.teamId}` : ""}
+                    {d.memberId ? ` · member ${d.memberId}` : ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground">skill {d.skillId}</p>
+                </div>
+                {canWithdraw && !d.withdrawn && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={withdrawing !== null}
+                    onClick={() => void handleWithdraw(d.id)}
+                  >
+                    <Trash2 /> 撤回
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
