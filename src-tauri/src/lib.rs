@@ -47,14 +47,13 @@ pub fn run() {
     );
     // 窗口状态记忆:自动保存/恢复位置、大小与最大化状态。
     let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
-    // 开机自启动:macOS 用 LaunchAgent;参数为空表示以默认方式启动。
     // 自动更新:插件先行注册;updater endpoints/pubkey 在 tauri.conf.json 配置并
     // 提供 TAURI_SIGNING_PRIVATE_KEY 后即启用(发布门槛 PRODUCT-BLUEPRINT §11)。
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    // 开机自启动:macOS 用 LaunchAgent;带 --hidden 参数,登录后静默驻留托盘。
     let builder = builder.plugin(tauri_plugin_autostart::init(
         tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-        // 自启动参数在“静默启动”主题中改为 HIDE_AT_LAUNCH_ARG。
-        Some(vec![]),
+        Some(vec![HIDE_AT_LAUNCH_ARG]),
     ));
     // 系统能力插件:系统通知/原生对话框/剪贴板/全局快捷键。前端经 src/services/*
     // 统一调用,capability 按最小权限开放(见 capabilities/default.json)。
@@ -95,6 +94,16 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
+            // 自启动静默启动:带 --hidden 参数时不显示主窗口,驻留托盘。
+            // 窗口默认可见,此处尽早隐藏,极短闪现可接受。
+            if std::env::args().any(|arg| arg == HIDE_AT_LAUNCH_ARG) {
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Err(error) = window.hide() {
+                        log::error!("静默启动隐藏主窗口失败: {error}");
+                    }
+                }
+            }
+
             #[cfg(any(windows, target_os = "linux"))]
             {
                 if let Err(error) = app.deep_link().register(RESET_DEEP_LINK_SCHEME) {
