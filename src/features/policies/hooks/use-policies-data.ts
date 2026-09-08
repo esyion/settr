@@ -49,17 +49,19 @@ export function usePoliciesData(): PoliciesDataApi {
     let cancelled = false;
     void (async () => {
       try {
-        const [pending, agent, claude, dists] = await Promise.all([
+        const [pending, agent, claude, dists, effective] = await Promise.all([
           policiesApi.listPolicyReviewRequests(organizationId),
           policiesApi.listPolicyHistory(organizationId, "AGENT"),
           policiesApi.listPolicyHistory(organizationId, "CLAUDE"),
           policiesApi.listPolicyDistributions(organizationId),
+          policiesApi.getEffectivePolicies(organizationId, "0", "0"),
         ]);
         if (cancelled) return;
         setPendingPolicies(pending);
         setAgentVersions(agent);
         setClaudeVersions(claude);
         setDistributions(dists);
+        setEffectivePolicies(effective);
       } catch (caught) {
         if (!cancelled) setError(readableError(caught, "加载政策失败"));
       }

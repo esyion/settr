@@ -174,6 +174,13 @@ export type SkillSourceType = "local" | "github" | "skills_sh" | "zip_upload";
 /** Skill 范围(当前 MVP 仅 personal,org 预留)。 */
 export type SkillScope = "personal" | "org";
 
+/** Skill 出现在订阅列表里的原因:个人创建、组织分发、用户订阅或导入。 */
+export type SkillSubscriptionSource =
+  | "PERSONAL_CREATE"
+  | "ORG_SUBSCRIBE"
+  | "USER_SUBSCRIBE"
+  | "IMPORT";
+
 /** Skill 元数据(列表/详情共用)。 */
 export interface Skill {
     id: string;
@@ -190,6 +197,8 @@ export interface Skill {
     latestVersion: string | null;
     contentHash: string;
     hasUpdateAvailable: boolean;
+    /** 订阅来源;仅订阅列表接口返回,普通 skill 列表为 null。 */
+    source?: SkillSubscriptionSource | null;
     createdAt: string;
     updatedAt: string;
 }

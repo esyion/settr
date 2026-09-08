@@ -82,7 +82,9 @@ mod tests {
     fn with_api_base_url_rejects_invalid() {
         let original = AppSettings::default_with_env();
         assert!(original.with_api_base_url("not-a-url").is_err());
-        assert!(original.with_api_base_url("http://api.example.com").is_err());
+        assert!(original
+            .with_api_base_url("http://api.example.com")
+            .is_err());
     }
 
     /// 编译期默认设置的地址应非空。

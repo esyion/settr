@@ -73,7 +73,8 @@ mod tests {
      * 构造唯一的临时目录,测试结束后整体清理。
      */
     fn temp_dir() -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("agents-plus-test-{}", Uuid::new_v4().simple()));
+        let dir =
+            std::env::temp_dir().join(format!("agents-plus-test-{}", Uuid::new_v4().simple()));
         fs::create_dir_all(&dir).expect("无法创建临时目录");
         dir
     }

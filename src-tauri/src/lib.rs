@@ -115,6 +115,7 @@ pub fn run() {
             commands::local::get_local_snapshot,
             commands::local::save_local_manifest,
             commands::local::apply_remote_document,
+            commands::policy::apply_org_policy,
             commands::network::api_request,
             commands::settings::get_settings,
             commands::settings::update_settings,

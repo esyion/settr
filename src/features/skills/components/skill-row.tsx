@@ -80,6 +80,11 @@ export function SkillRow({
               {sourceTag}
             </Badge>
           )}
+          {skill.source === "ORG_SUBSCRIBE" && (
+            <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+              组织分发
+            </Badge>
+          )}
           {skill.hasUpdateAvailable && (
             <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
               有更新

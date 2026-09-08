@@ -4,6 +4,7 @@ use super::local_paths::{
     legacy_agents_manifest_path, legacy_device_path, manifest_path,
 };
 use crate::domain::document_format::DocumentFormat;
+use crate::domain::managed_block;
 use crate::hash::sha256_hex;
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -99,6 +100,9 @@ fn modified_at_ms(metadata: &fs::Metadata) -> Option<u64> {
 }
 
 /// Reads one local rule document, its metadata, content hash, and manifest.
+///
+/// 返回的是"个人区视图":组织策略托管区块在读取时被剥离,
+/// content/contentHash/bytes 均只描述个人区,revision 同步链路对托管区无感知。
 pub fn read_snapshot(format: DocumentFormat) -> Result<LocalFileSnapshot, String> {
     let path = ensure_primary_document(format)?;
     let manifest = read_manifest(format)?;
@@ -115,15 +119,16 @@ pub fn read_snapshot(format: DocumentFormat) -> Result<LocalFileSnapshot, String
     }
     let metadata = fs::metadata(&path)
         .map_err(|error| format!("无法读取 {} 文件信息: {error}", format.file_name()))?;
-    let content = fs::read_to_string(&path)
+    let raw = fs::read_to_string(&path)
         .map_err(|error| format!("{} 必须是有效的 UTF-8 文件: {error}", format.file_name()))?;
+    let personal = managed_block::split(&raw).personal;
     Ok(LocalFileSnapshot {
         exists: true,
         display_path: format.display_path(),
-        bytes: content.len() as u64,
+        bytes: personal.len() as u64,
         modified_at_ms: modified_at_ms(&metadata),
-        content_hash: Some(sha256_hex(&content)),
-        content: Some(content),
+        content_hash: Some(sha256_hex(&personal)),
+        content: Some(personal),
         manifest,
     })
 }
@@ -180,6 +185,9 @@ pub fn save_manifest(
 }
 
 /// Safely applies remote content for one rule format after hash validation and backup.
+///
+/// request.content 描述的是个人区:写入前会读取磁盘上现存的托管区块并重新拼接,
+/// 组织策略下发的托管区字节不会被 revision 同步覆盖。
 pub fn apply_document(request: ApplyDocumentRequest) -> Result<LocalFileSnapshot, String> {
     let format = request.format;
     let path = ensure_primary_document(format)?;
@@ -191,7 +199,64 @@ pub fn apply_document(request: ApplyDocumentRequest) -> Result<LocalFileSnapshot
             );
         }
     }
-    if request.content.len() > MAX_DOCUMENT_BYTES {
+    let existing_policy = read_raw_policy(format)?;
+    let composed = managed_block::compose(&request.content, existing_policy.as_deref());
+    write_document_atomically(format, &path, &composed)?;
+    save_manifest(format, request.manifest)?;
+    read_snapshot(format)
+}
+
+/// Applies an organization policy block for one rule format, preserving personal content.
+///
+/// 返回是否发生了磁盘写入:新策略与现存托管区块逐字节一致(或两侧都为空)时是幂等空操作,
+/// 避免无变化的原子替换触发文件监听与同步链路。policy 为 None 或空白表示撤回下发,
+/// 会移除现存托管区块并原样保留个人区。
+pub fn apply_policy_block(format: DocumentFormat, policy: Option<&str>) -> Result<bool, String> {
+    if let Some(policy) = policy {
+        if managed_block::contains_managed_marker(policy) {
+            return Err(format!(
+                "POLICY_CONTENT_INVALID:{} 策略内容包含托管标记,已拒绝写入",
+                format.file_name()
+            ));
+        }
+    }
+    let normalized = policy
+        .map(|value| value.trim_end_matches(['\r', '\n']).to_string())
+        .filter(|value| !value.trim().is_empty());
+    let path = ensure_primary_document(format)?;
+    let raw = if path.exists() {
+        fs::read_to_string(&path)
+            .map_err(|error| format!("无法读取 {} 文件: {error}", format.file_name()))?
+    } else {
+        String::new()
+    };
+    let split = managed_block::split(&raw);
+    if split.policy.as_deref() == normalized.as_deref() {
+        return Ok(false);
+    }
+    let composed = managed_block::compose(&split.personal, normalized.as_deref());
+    write_document_atomically(format, &path, &composed)?;
+    Ok(true)
+}
+
+/// Reads the raw on-disk managed policy block body, if a complete block exists.
+fn read_raw_policy(format: DocumentFormat) -> Result<Option<String>, String> {
+    let path = ensure_primary_document(format)?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    let raw = fs::read_to_string(&path)
+        .map_err(|error| format!("无法读取 {} 文件: {error}", format.file_name()))?;
+    Ok(managed_block::split(&raw).policy)
+}
+
+/// Backs up the current file and replaces it atomically with the composed content.
+fn write_document_atomically(
+    format: DocumentFormat,
+    path: &std::path::Path,
+    composed: &str,
+) -> Result<(), String> {
+    if composed.len() > MAX_DOCUMENT_BYTES {
         return Err(format!(
             "CONTENT_TOO_LARGE:{} 超过服务端允许的大小",
             format.file_name()
@@ -206,7 +271,7 @@ pub fn apply_document(request: ApplyDocumentRequest) -> Result<LocalFileSnapshot
             .map_err(|error| error.to_string())?
             .as_millis();
         fs::copy(
-            &path,
+            path,
             backup_dir.join(format!("{}-{timestamp}.md", format.file_stem())),
         )
         .map_err(|error| format!("无法创建远程覆盖前备份: {error}"))?;
@@ -222,12 +287,10 @@ pub fn apply_document(request: ApplyDocumentRequest) -> Result<LocalFileSnapshot
             .write(true)
             .open(&temp_path)
             .map_err(|error| format!("无法创建 {} 临时文件: {error}", format.file_name()))?;
-        file.write_all(request.content.as_bytes())
+        file.write_all(composed.as_bytes())
             .map_err(|error| format!("无法写入 {} 临时文件: {error}", format.file_name()))?;
         file.sync_all()
             .map_err(|error| format!("无法持久化 {} 临时文件: {error}", format.file_name()))?;
     }
-    super::atomic_file::replace_file(&temp_path, &path)?;
-    save_manifest(format, request.manifest)?;
-    read_snapshot(format)
+    super::atomic_file::replace_file(&temp_path, path)
 }

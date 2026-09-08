@@ -27,6 +27,7 @@ import {
 } from "@/features/sync/sync-controller-context";
 import { useSyncController as useSyncControllerInstance } from "@/features/sync/use-sync-controller";
 import { useWorkspaceBootstrap } from "@/features/context/hooks/use-workspace-context";
+import { useOrgPolicySync } from "@/features/policies/hooks/use-org-policy-sync";
 
 const PAGE_META: Record<string, string> = {
   "/overview": "概览",
@@ -52,6 +53,8 @@ export default function AppLayout({
 }) {
   // 首次进入应用时拉取组织列表写入 useWorkspaceStore；子组件直接读 store，无需 Provider。
   useWorkspaceBootstrap();
+  // 激活组织期间把生效 AGENT/CLAUDE 策略物化到本地托管区块，切回个人时清除。
+  useOrgPolicySync();
   return (
       <SyncControllerProvider value={useSyncControllerInstance()}>
         <AppLayoutShell>{children}</AppLayoutShell>

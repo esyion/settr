@@ -23,6 +23,7 @@ import {
   disableSkillHarness,
 } from "@/features/skills/api";
 import { HARNESS_LIST, HARNESS_META, type LocalState } from "@/features/skills/skill-harness";
+import { countByHarness, filterVisibleSkills } from "@/features/skills/skill-list-select";
 import { SkillRow, HarnessChip, readableError } from "@/features/skills/components/skill-row";
 import { useSkillStore } from "@/features/skills/store/skill-store";
 import { usePendingUpdates } from "@/features/skills/hooks/use-pending-updates";
@@ -56,11 +57,10 @@ export function SkillList() {
     setListLoading(true);
     setListError(null);
     try {
-      const result = await api.listSkills({
-        q: query.trim() || undefined,
-        size: 100,
-      });
-      setSkillList(result.records);
+      // 订阅列表 = 我的创建 ∪ 我的订阅 ∪ 组织分发(source 字段区分来源),
+      // 是原 personal 浏览列表的严格超集;搜索在本地过滤,不再走服务端 q 参数。
+      const result = await api.listSkillSubscriptions();
+      setSkillList(result);
       try {
         if (typeof window !== "undefined") {
           const snap = await readLocalSkillState();
@@ -74,11 +74,10 @@ export function SkillList() {
     } finally {
       setListLoading(false);
     }
-  }, [query, setSkillList, setListLoading, setListError]);
+  }, [setSkillList, setListLoading, setListError]);
 
   // 进入页面时拉一次首屏数据;refresh 内部状态变更走 then() 链而非同步 setState。
   useEffect(() => {
-    // 输入防抖 300ms,避免逐字符触发全量请求与列表闪烁。
     const timer = setTimeout(() => {
       void Promise.resolve().then(() => refresh());
     }, 300);
@@ -149,26 +148,9 @@ export function SkillList() {
     }
   };
 
-  // 计算每个 harness 启用的 skill 数(用于顶部 chips 计数)
-  const harnessCounts: Record<HarnessKey, number> = {
-    claude: 0,
-    codex: 0,
-    gemini: 0,
-    grokbuild: 0,
-    opencode: 0,
-    hermes: 0,
-    pi: 0,
-  };
-  for (const entry of Object.values(localState)) {
-    for (const h of entry.enabledHarnesses) {
-      if (h in harnessCounts) harnessCounts[h as HarnessKey] += 1;
-    }
-  }
-
-  const visible =
-    harnessFilter === "all"
-      ? skills
-      : skills.filter((s) => s.id && (localState[s.id]?.enabledHarnesses ?? []).includes(harnessFilter));
+  // 计算每个 harness 启用的 skill 数(用于顶部 chips 计数),并按关键字与 harness 过滤。
+  const harnessCounts = countByHarness(localState);
+  const visible = filterVisibleSkills(skills, localState, harnessFilter, query);
 
   return (
     <div className="flex flex-col gap-4">
