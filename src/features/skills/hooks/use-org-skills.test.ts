@@ -11,14 +11,14 @@ vi.mock("@/lib/api-client", () => ({
 describe("useOrgSkills", () => {
   beforeEach(() => vi.mocked(api.listSkills).mockReset());
 
-  it("以 scope=org 拉取组织 skill 列表", async () => {
+  it("以 scope=ORG(服务端枚举大写)拉取组织 skill 列表", async () => {
     vi.mocked(api.listSkills).mockResolvedValue({
       records: [{ id: "2", name: "alpha" }],
       total: 1,
     } as never);
     const { result } = renderHook(() => useOrgSkills("10"));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(api.listSkills).toHaveBeenCalledWith({ scope: "org", orgId: "10", size: 100 });
+    expect(api.listSkills).toHaveBeenCalledWith({ scope: "ORG", orgId: "10", size: 100 });
     expect(result.current.skills).toHaveLength(1);
     expect(result.current.error).toBeNull();
   });

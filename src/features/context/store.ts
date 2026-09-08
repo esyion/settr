@@ -7,7 +7,9 @@ import { listMyPermissions, type MyPermissions } from "@/lib/api-permission";
 import type { Organization } from "@/lib/contracts";
 
 /**
- * 工作区上下文作用域：用户当前激活的是个人空间还是某个组织。
+ * 工作区上下文作用域:用户当前激活的是个人空间还是某个组织。
+ * 注意:这是纯 UI 导航态,与服务端枚举 SkillOwnerScope(PERSONAL/ORG)是
+ * 两个概念,勿将其值直接作为 API 请求参数;线上取值只在 lib/api-*.ts 收口。
  */
 export type WorkspaceScope = "personal" | "organization";
 
@@ -78,7 +80,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setOrganizations: (orgs) => {
         const currentId = get().organizationId;
         const matched = currentId
-          ? orgs.find((org) => org.id === currentId) ?? null
+          ? (orgs.find((org) => org.id === currentId) ?? null)
           : null;
         set({
           organizations: orgs,

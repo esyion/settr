@@ -54,18 +54,24 @@ export function AuthFormPanel({
   onSwitchMode,
   onAuthenticated,
   onForgotPassword,
+  initialMessage,
+  onAutoLoginFailed,
 }: {
   identity: DeviceIdentity | null;
   mode: "login" | "register";
   onSwitchMode: () => void;
   onAuthenticated: () => Promise<void>;
   onForgotPassword: () => void;
+  /** 面板挂载时的初始提示，用于跨页面携带场景（如注册成功但自动登录失败后跳转登录页）。 */
+  initialMessage?: string | null;
+  /** 注册成功但自动登录失败时的回调；未提供时在本面板内原地提示。 */
+  onAutoLoginFailed?: () => void;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(initialMessage ?? null);
 
   /**
    * 处理登录或注册提交;注册模式下先校验密码策略再调用接口。
@@ -87,9 +93,25 @@ export function AuthFormPanel({
     setBusy(true);
     try {
       if (mode === "register") {
-        await api.register(email.trim(), password);
+        try {
+          await api.register(email.trim(), password);
+        } catch (error) {
+          setMessage(errorMessage(error));
+          return;
+        }
       }
-      await api.login({ email: email.trim(), password, identity });
+      try {
+        await api.login({ email: email.trim(), password, identity });
+      } catch (error) {
+        if (mode === "register" && onAutoLoginFailed) {
+          // 注册已成功提交，此时不能展示成"注册失败"，否则用户重试会撞"用户已存在"；
+          // 跳转登录页提示，由登录页通过 initialMessage 展示。
+          onAutoLoginFailed();
+          return;
+        }
+        setMessage(errorMessage(error));
+        return;
+      }
       await onAuthenticated();
     } catch (error) {
       setMessage(errorMessage(error));

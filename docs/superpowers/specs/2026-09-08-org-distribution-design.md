@@ -156,7 +156,7 @@ isVisible(skill, principal):
 
 | | 个人态 `/skills` | 组织态 `/organization/skills` |
 |---|---|---|
-| 列表数据 | `/subscriptions`(现状不变) | `GET /skills?scope=org&org_id`(lib/api-skill.ts:119 已封装) |
+| 列表数据 | `/subscriptions`(现状不变) | `GET /skills?scope=ORG&org_id`(枚举大写;lib/api-skill.ts listSkills 已封装) |
 | 创建/导入/发布 | 现状 | 同一套表单组件;归属自动 = 当前 orgId,无空间选择器 |
 | 编辑/删除/发布按钮 | owner 恒可见 | 按 `skill:manage` 显隐;无权限成员只读+可安装 |
 | 分发入口 | 无 | 行菜单"分发"(按 `skill:distribute` 显隐) |

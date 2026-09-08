@@ -124,7 +124,7 @@ export const skillApi = {
       { method: "DELETE" }
     ),
 
-  listSkills: (params?: { scope?: "personal" | "org"; orgId?: string; q?: string; page?: number; size?: number }) => {
+  listSkills: (params?: { scope?: "PERSONAL" | "ORG"; orgId?: string; q?: string; page?: number; size?: number }) => {
     const query = new URLSearchParams();
     if (params?.scope) query.set("scope", params.scope);
     if (params?.orgId) query.set("org_id", params.orgId);

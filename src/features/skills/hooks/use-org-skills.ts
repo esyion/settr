@@ -5,7 +5,8 @@ import { api } from "@/lib/api-client";
 import type { Skill } from "@/lib/contracts";
 
 /**
- * 组织空间 skill 列表数据源:GET /skills?scope=org&org_id(规格 §6.2)。
+ * 组织空间 skill 列表数据源:GET /skills?scope=ORG&org_id(scope 值须与服务端枚举
+ * SkillOwnerScope 的大写常量一致,小写会 400)。
  * 五态:loading / error 供页面渲染 retry;orgId 变化自动重拉;
  * 竞态守卫:响应落地时组织已切换则丢弃。
  *
@@ -26,7 +27,7 @@ export function useOrgSkills(orgId: string | null) {
     setLoading(true);
     setError(null);
     try {
-      const page = await api.listSkills({ scope: "org", orgId: requestOrgId, size: 100 });
+      const page = await api.listSkills({ scope: "ORG", orgId: requestOrgId, size: 100 });
       if (orgIdRef.current !== requestOrgId) return;
       setSkills(page.records);
     } catch (caught) {

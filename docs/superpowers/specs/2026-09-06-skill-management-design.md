@@ -180,7 +180,7 @@ REST 命名空间 `/api/v1/skills`。所有 ID snowflake → JSON 序列化时�
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
-| GET | `/api/v1/skills` | 列出当前用户可见的 skill(自创 + 订阅)。query: `?scope=personal\|org&org_id=&page=&size=&q=` |
+| GET | `/api/v1/skills` | 列出当前用户可见的 skill(自创 + 订阅)。query: `?scope=PERSONAL\|ORG&org_id=&page=&size=&q=`(枚举大写,大小写敏感) |
 | POST | `/api/v1/skills` | 创建 skill(personal)。body: `{name, display_name?, description?, source_type, source_url?, source_ref?}` |
 | GET | `/api/v1/skills/{id}` | skill 详情(含 latest_version 摘要) |
 | PATCH | `/api/v1/skills/{id}` | 更新元数据(仅 owner) |

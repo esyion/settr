@@ -47,6 +47,9 @@ function RegisterContent() {
         identity={device.identity}
         mode="register"
         onSwitchMode={() => router.replace("/login")}
+        onAutoLoginFailed={() =>
+          router.replace("/login?notice=auto-login-failed")
+        }
         onAuthenticated={async () => {
           router.replace(safeReturnUrl ?? "/overview");
         }}

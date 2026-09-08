@@ -29,6 +29,11 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const safeReturnUrl = pickSafeReturnUrl(searchParams.get("returnUrl"));
+  // 注册成功但自动登录失败时，注册页携带 notice 参数跳转过来，需向用户说明账号已创建。
+  const initialMessage =
+    searchParams.get("notice") === "auto-login-failed"
+      ? "注册成功，自动登录失败，请重新登录"
+      : null;
   const device = useDeviceIdentity();
 
   // 已登录用户访问 /login 时直接跳到概览页。
@@ -62,6 +67,7 @@ function LoginContent() {
       <AuthFormPanel
         identity={device.identity}
         mode="login"
+        initialMessage={initialMessage}
         onSwitchMode={() => router.replace("/register")}
         onAuthenticated={async () => {
           router.replace(safeReturnUrl ?? "/overview");

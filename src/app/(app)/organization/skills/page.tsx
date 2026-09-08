@@ -13,7 +13,7 @@ import { api } from "@/lib/api-client";
 import type { Skill } from "@/lib/contracts";
 
 /**
- * 组织空间 skill 管理页:数据源为组织可见 skill(GET /skills?scope=org),
+ * 组织空间 skill 管理页:数据源为组织可见 skill(GET /skills?scope=ORG),
  * 创建/导入/发布与个人态共用组件(归属自动绑定当前组织);
  * 顶部为组织分发记录卡片,行内"分发"入口按 skill:distribute 权限显隐(规格 §6.2/§6.3)。
  */
