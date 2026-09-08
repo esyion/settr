@@ -77,13 +77,13 @@ export const policyApi = {
         encodeURIComponent(organizationId) +
         "/policies/changes/pending",
     ),
-  distributePolicy: (
+  /** 分发作用域(与后端枚举对齐;PROJECT 本期不接)。 */
+  distributePolicyVersion: (
     organizationId: string,
     input: {
       versionId: string;
-      scopeType: string;
+      scopeType: "ORGANIZATION" | "TEAM" | "MEMBER";
       teamId?: string;
-      projectId?: string;
       memberId?: string;
     },
   ) =>

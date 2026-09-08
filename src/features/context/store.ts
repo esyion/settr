@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { api, ApiClientError } from "@/lib/api-client";
+import { listMyPermissions, type MyPermissions } from "@/lib/api-permission";
 import type { Organization } from "@/lib/contracts";
 
 /**
@@ -25,6 +26,8 @@ function readableError(error: unknown, fallback: string): string {
  *   <li>scope 决定侧边栏与数据源是个人还是组织；</li>
  *   <li>organizationId / organizationName 同步当前激活组织；</li>
  *   <li>organizations 缓存用户所属组织列表，避免每次切回都重新拉取；</li>
+ *   <li>myPermissions 缓存当前组织的权限码汇总(切换组织时重拉,R4 不做推送失效),
+ *       hasPermission 是分发/管理按钮显隐的唯一判定入口;数据缺失按无权限处理(宁少勿多);</li>
  *   <li>loading / error 是 refresh 的请求态，供组织子路由守卫与切换器禁用触发器；</li>
  *   <li>setOrganizations 会校验当前 organizationId 是否仍合法，无效则降级回 personal。</li>
  * </ul>
@@ -34,12 +37,17 @@ interface WorkspaceState {
   organizationId: string | null;
   organizationName: string | null;
   organizations: Organization[];
+  myPermissions: MyPermissions | null;
   loading: boolean;
   error: string | null;
 
   setOrganizations: (orgs: Organization[]) => void;
   setOrganization: (id: string) => void;
   clearOrganization: () => void;
+  /** 拉取当前组织的权限码汇总;仍停留在该组织时才写入,失败降级为 null。 */
+  refreshMyPermissions: (orgId: string) => Promise<void>;
+  /** 判定当前工作区是否拥有指定权限码(org 级命中,或 teamId 对应的团队级命中)。 */
+  hasPermission: (code: string, teamId?: string) => boolean;
   /** 拉取最新组织列表并复校当前选择；任何组件均可通过 store 直接触发，无需经过 Context。 */
   refresh: () => Promise<void>;
   reset: () => void;
@@ -53,6 +61,7 @@ const initialState = {
   organizationId: null as string | null,
   organizationName: null as string | null,
   organizations: [] as Organization[],
+  myPermissions: null as MyPermissions | null,
   loading: false,
   error: null as string | null,
 };
@@ -76,7 +85,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           organizationId: matched ? matched.id : null,
           organizationName: matched ? matched.name : null,
           scope: matched ? "organization" : "personal",
+          myPermissions: matched ? get().myPermissions : null,
         });
+        // 复校仍命中当前组织(含刷新页面后的首次同步)时刷新权限汇总
+        if (matched) {
+          void get().refreshMyPermissions(matched.id);
+        }
       },
 
       setOrganization: (id) => {
@@ -87,6 +101,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           organizationName: org.name,
           scope: "organization",
         });
+        // 切换组织即重拉权限(R4:不做推送失效,不做页面级重拉)
+        void get().refreshMyPermissions(org.id);
       },
 
       clearOrganization: () => {
@@ -94,7 +110,31 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           organizationId: null,
           organizationName: null,
           scope: "personal",
+          myPermissions: null,
         });
+      },
+
+      refreshMyPermissions: async (orgId) => {
+        try {
+          const my = await listMyPermissions(orgId);
+          // 仅当仍停留在该组织时写入,防止切换竞态写入过期权限
+          if (get().organizationId === orgId) set({ myPermissions: my });
+        } catch {
+          // 拉取失败按无权限处理(按钮隐藏而非禁用,宁少勿多),不阻塞组织切换
+          set({ myPermissions: null });
+        }
+      },
+
+      hasPermission: (code, teamId) => {
+        const my = get().myPermissions;
+        if (!my) return false;
+        if (my.orgLevel.includes(code)) return true;
+        if (teamId) {
+          return my.teamLevel.some(
+            (t) => t.teamId === teamId && t.permissions.includes(code),
+          );
+        }
+        return false;
       },
 
       refresh: async () => {

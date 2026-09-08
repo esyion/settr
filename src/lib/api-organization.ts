@@ -111,18 +111,12 @@ export const organizationApi = {
         encodeURIComponent(organizationId) +
         "/members",
     ),
-  getEffectivePolicies: (
-    organizationId: string,
-    teamId: string,
-    projectId: string,
-  ) =>
+  /** 获取当前成员的生效规范(服务端聚合,不传团队参数——规格 §6.5)。 */
+  getEffectivePolicies: (organizationId: string) =>
     request<import("@/lib/contracts").EffectivePolicies>(
       "/api/v1/organizations/" +
         encodeURIComponent(organizationId) +
-        "/policies/effective?teamId=" +
-        encodeURIComponent(teamId) +
-        "&projectId=" +
-        encodeURIComponent(projectId),
+        "/policies/effective",
     ),
   listRoles: (organizationId: string) =>
     request<import("@/lib/contracts").Role[]>(
