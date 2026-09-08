@@ -9,6 +9,7 @@ pub mod state;
 use tauri::Emitter;
 use tauri::Manager;
 use tauri_plugin_deep_link::DeepLinkExt;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 /// 密码重置深链使用的协议头，与后端 {@code agents.auth.password-reset.reset-url-scheme} 和前端
 /// {@link \@/lib/deep-link.ts} 中的常量保持一致。
 const RESET_DEEP_LINK_SCHEME: &str = "agentsplus";
@@ -16,6 +17,9 @@ const RESET_DEEP_LINK_SCHEME: &str = "agentsplus";
 /// 开机自启动使用的静默启动参数:带此参数启动时不显示主窗口(驻留托盘)。
 /// 与 tauri_plugin_autostart 注册的启动参数保持一致。
 const HIDE_AT_LAUNCH_ARG: &str = "--hidden";
+
+/// 全局快捷键(唤起主窗口),Tauri 快捷键语法;与其他应用冲突时注册失败仅降级警告。
+const GLOBAL_SHOW_SHORTCUT: &str = "CmdOrCtrl+Alt+A";
 
 /// Builds and runs the Agents Plus Tauri application.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -49,8 +53,16 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     let builder = builder.plugin(tauri_plugin_autostart::init(
         tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+        // 自启动参数在“静默启动”主题中改为 HIDE_AT_LAUNCH_ARG。
         Some(vec![]),
     ));
+    // 系统能力插件:系统通知/原生对话框/剪贴板/全局快捷键。前端经 src/services/*
+    // 统一调用,capability 按最小权限开放(见 capabilities/default.json)。
+    let builder = builder
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
 
     // 单实例:Windows 走插件;macOS 系统本身保证单实例;Linux 由插件兜底,
     // 同时承接深链 URL 向既有实例的转发(deep-link 插件在运行态依赖该机制)。
@@ -114,6 +126,20 @@ pub fn run() {
             infrastructure::tray::setup_tray(app.handle()).map_err(std::io::Error::other)?;
             infrastructure::tray::setup_close_to_tray(app.handle())
                 .map_err(std::io::Error::other)?;
+            // 全局快捷键:一键唤起主窗口(配合托盘常驻形态)。注册失败仅警告降级,
+            // 不阻断启动;常见冲突原因是其他应用占用同组合键。
+            if let Err(error) = app.global_shortcut().on_shortcut(
+                GLOBAL_SHOW_SHORTCUT,
+                |app, _shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        if let Err(error) = infrastructure::tray::show_main_window(app) {
+                            log::error!("全局快捷键唤起主窗口失败: {error}");
+                        }
+                    }
+                },
+            ) {
+                log::warn!("注册全局快捷键 {GLOBAL_SHOW_SHORTCUT} 失败(可能与其他应用冲突): {error}");
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

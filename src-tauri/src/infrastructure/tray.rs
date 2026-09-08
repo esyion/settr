@@ -50,7 +50,9 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
 }
 
 /// Shows and focuses the main application window.
-fn show_main_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+/// <p>
+/// 托盘菜单、托盘点击与全局快捷键共用;crate 内可见。
+pub(crate) fn show_main_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     let window = app
         .get_webview_window(MAIN_WINDOW_LABEL)
         .ok_or_else(|| "未找到主窗口".to_string())?;
