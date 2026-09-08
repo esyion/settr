@@ -1,0 +1,4 @@
+# 本机 20 逻辑核但日常空闲提交内存不足（IDEA/WSL/rust-analyzer 常驻），
+# cargo 默认按核数并行会 OOM 并写坏 target 下的 rmeta，故限制并行度。
+[build]
+jobs = 4
