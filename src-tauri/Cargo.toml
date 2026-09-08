@@ -39,7 +39,6 @@ uuid = { version = "1", features = ["v4", "fast-rng", "serde"] }
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 dirs = "5"
 thiserror = "1"
-rusqlite = { version = "0.40", features = ["bundled", "backup", "hooks"] }
 
 [target.'cfg(windows)'.dependencies]
 tauri-plugin-single-instance = "2"
