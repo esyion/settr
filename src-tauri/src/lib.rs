@@ -144,17 +144,19 @@ pub fn run() {
                 .map_err(std::io::Error::other)?;
             // 全局快捷键:一键唤起主窗口(配合托盘常驻形态)。注册失败仅警告降级,
             // 不阻断启动;常见冲突原因是其他应用占用同组合键。
-            if let Err(error) = app.global_shortcut().on_shortcut(
-                GLOBAL_SHOW_SHORTCUT,
-                |app, _shortcut, event| {
-                    if event.state() == ShortcutState::Pressed {
-                        if let Err(error) = infrastructure::tray::show_main_window(app) {
-                            log::error!("全局快捷键唤起主窗口失败: {error}");
+            if let Err(error) =
+                app.global_shortcut()
+                    .on_shortcut(GLOBAL_SHOW_SHORTCUT, |app, _shortcut, event| {
+                        if event.state() == ShortcutState::Pressed {
+                            if let Err(error) = infrastructure::tray::show_main_window(app) {
+                                log::error!("全局快捷键唤起主窗口失败: {error}");
+                            }
                         }
-                    }
-                },
-            ) {
-                log::warn!("注册全局快捷键 {GLOBAL_SHOW_SHORTCUT} 失败(可能与其他应用冲突): {error}");
+                    })
+            {
+                log::warn!(
+                    "注册全局快捷键 {GLOBAL_SHOW_SHORTCUT} 失败(可能与其他应用冲突): {error}"
+                );
             }
             Ok(())
         })

@@ -21,8 +21,7 @@ pub fn cleanup_expired_logs<R: Runtime>(app: &AppHandle<R>) {
     let Ok(log_dir) = app.path().app_log_dir() else {
         return;
     };
-    let Some(cutoff) =
-        SystemTime::now().checked_sub(Duration::from_secs(RETENTION_DAYS * 86_400))
+    let Some(cutoff) = SystemTime::now().checked_sub(Duration::from_secs(RETENTION_DAYS * 86_400))
     else {
         return;
     };
