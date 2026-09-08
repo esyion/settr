@@ -13,6 +13,10 @@ use tauri_plugin_deep_link::DeepLinkExt;
 /// {@link \@/lib/deep-link.ts} 中的常量保持一致。
 const RESET_DEEP_LINK_SCHEME: &str = "agentsplus";
 
+/// 开机自启动使用的静默启动参数:带此参数启动时不显示主窗口(驻留托盘)。
+/// 与 tauri_plugin_autostart 注册的启动参数保持一致。
+const HIDE_AT_LAUNCH_ARG: &str = "--hidden";
+
 /// Builds and runs the Agents Plus Tauri application.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -48,14 +52,19 @@ pub fn run() {
         Some(vec![]),
     ));
 
-    #[cfg(target_os = "windows")]
+    // 单实例:Windows 走插件;macOS 系统本身保证单实例;Linux 由插件兜底,
+    // 同时承接深链 URL 向既有实例的转发(deep-link 插件在运行态依赖该机制)。
+    #[cfg(any(windows, target_os = "linux"))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-        if let Some(window) = app.get_webview_window("main") {
-            if let Err(error) = window.show() {
-                log::error!("聚焦已有实例窗口失败: {error}");
-            }
-            if let Err(error) = window.set_focus() {
-                log::error!("聚焦已有实例窗口失败: {error}");
+        // 二次启动若来自自启动(带 --hidden),保持静默,不弹主窗口。
+        if !_args.iter().any(|arg| arg == HIDE_AT_LAUNCH_ARG) {
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(error) = window.show() {
+                    log::error!("聚焦已有实例窗口失败: {error}");
+                }
+                if let Err(error) = window.set_focus() {
+                    log::error!("聚焦已有实例窗口失败: {error}");
+                }
             }
         }
         let urls: Vec<String> = _args
