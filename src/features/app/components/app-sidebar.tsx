@@ -44,7 +44,7 @@ const PERSONAL_GROUPS: NavMainGroup[] = [
   },
 ];
 
-/** 组织空间下的导航组:组织概览 / 团队与项目 / 成员 / 规范 / 角色。 */
+/** 组织空间下的导航组:组织概览 / 团队与项目 / 成员 / Skills / 规范 / 角色。 */
 const ORGANIZATION_GROUPS: NavMainGroup[] = [
   {
     label: "组织空间",
@@ -52,6 +52,7 @@ const ORGANIZATION_GROUPS: NavMainGroup[] = [
       { href: "/organization", label: "组织概览", icon: Building2 },
       { href: "/organization/teams", label: "团队与项目", icon: FolderTree },
       { href: "/organization/memberships", label: "成员", icon: UserPlus },
+      { href: "/organization/skills", label: "Skills", icon: Package },
       { href: "/organization/policies", label: "规范", icon: ScrollText },
       { href: "/organization/roles", label: "角色", icon: ShieldCheck },
     ],

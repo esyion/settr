@@ -33,11 +33,20 @@ import { usePendingUpdates } from "@/features/skills/hooks/use-pending-updates";
  *  - 顶部:左 "已安装" + 右动作(从 ZIP 安装 / 新建);次行:harness 计数 chips + 检查更新
  *  - 主体:每行一个 skill(左 name + 来源 + 描述,右 7 个 harness Toggle + 编辑/删除)
  *  - harness 切换:对齐 cc-switch 的 AppToggleGroup;Toggle 来自 shadcn/ui
+ *
+ * 双态数据源(规格 §6.2):默认读订阅 store(个人态);传入 items/onRefreshOverride
+ * 时切换为组织态数据源(useOrgSkills),其余渲染/toggle 逻辑两态共用。
  */
-export function SkillList() {
+export function SkillList(props: {
+  /** 传入时覆盖 store 数据(组织态数据源)。 */
+  items?: Skill[];
+  /** 传入时覆盖列表刷新动作(组织态用 useOrgSkills.refresh)。 */
+  onRefreshOverride?: () => void | Promise<void>;
+}) {
   const router = useRouter();
   // 列表数据/请求态迁移到 useSkillStore：列表页、详情页、顶栏角标共享，返回列表不丢数据。
-  const skills = useSkillStore((s) => s.skillList);
+  // hooks 不能条件调用:store 订阅始终执行,再由 props 决定是否采用。
+  const storeSkills = useSkillStore((s) => s.skillList);
   const loading = useSkillStore((s) => s.listLoading);
   const error = useSkillStore((s) => s.listError);
   const setSkillList = useSkillStore((s) => s.setSkillList);
@@ -52,15 +61,22 @@ export function SkillList() {
   const [localState, setLocalState] = useState<LocalState>({});
   const [harnessFilter, setHarnessFilter] = useState<HarnessKey | "all">("all");
   const [toggling, setToggling] = useState<Record<string, boolean>>({});
+  // 组织态传入 items 时覆盖 store 数据;两态共用后续渲染/过滤逻辑
+  const skills = props.items ?? storeSkills;
 
   const refresh = useCallback(async () => {
     setListLoading(true);
     setListError(null);
     try {
-      // 订阅列表 = 我的创建 ∪ 我的订阅 ∪ 组织分发(source 字段区分来源),
-      // 是原 personal 浏览列表的严格超集;搜索在本地过滤,不再走服务端 q 参数。
-      const result = await api.listSkillSubscriptions();
-      setSkillList(result);
+      if (props.onRefreshOverride) {
+        // 组织态:列表刷新走 useOrgSkills.refresh
+        await props.onRefreshOverride();
+      } else {
+        // 个人态:订阅列表 = 我的创建 ∪ 我的订阅 ∪ 组织分发(source 字段区分来源),
+        // 是原 personal 浏览列表的严格超集;搜索在本地过滤,不再走服务端 q 参数。
+        const result = await api.listSkillSubscriptions();
+        setSkillList(result);
+      }
       try {
         if (typeof window !== "undefined") {
           const snap = await readLocalSkillState();
@@ -74,6 +90,7 @@ export function SkillList() {
     } finally {
       setListLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setSkillList, setListLoading, setListError]);
 
   // 进入页面时拉一次首屏数据;refresh 内部状态变更走 then() 链而非同步 setState。
