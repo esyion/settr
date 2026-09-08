@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,6 +44,15 @@ export function DistributeDialog(props: DistributeDialogProps) {
   const [scope, setScope] = useState<DistributeScope>("ORGANIZATION");
   const [teamId, setTeamId] = useState("");
   const [memberId, setMemberId] = useState("");
+
+  // 每次打开重置选中态,避免残留上一组织/上一目标的选择
+  useEffect(() => {
+    if (props.open) {
+      setScope("ORGANIZATION");
+      setTeamId("");
+      setMemberId("");
+    }
+  }, [props.open]);
 
   const canSubmit =
     !props.busy &&

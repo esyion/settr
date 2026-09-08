@@ -54,6 +54,18 @@ describe("OrgDistributionCard", () => {
     expect(screen.queryByRole("button", { name: /撤回/ })).toBeNull();
   });
 
+  it("canWithdraw=true 但记录已撤回(withdrawn=true)时不渲染撤回按钮", async () => {
+    vi.mocked(api.listSkillDistributions).mockResolvedValue([
+      {
+        id: "8", skillId: "3", organizationId: "10", scopeType: "TEAM" as const,
+        teamId: "100", memberId: null, distributedByMemberId: "1", withdrawn: true,
+      },
+    ]);
+    render(<OrgDistributionCard orgId="10" canWithdraw />);
+    await waitFor(() => expect(screen.getByText(/TEAM/)).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /撤回/ })).toBeNull();
+  });
+
   it("加载失败渲染 error + 重试", async () => {
     vi.mocked(api.listSkillDistributions).mockRejectedValue(new Error("网络错误"));
     render(<OrgDistributionCard orgId="10" canWithdraw />);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,20 +21,29 @@ export interface OrgDistributionCardProps {
 
 /**
  * 组织 skill 分发记录卡片:列出活跃分发并支持撤回。
- * 五态覆盖:loading/success/empty/error/retry。
+ * 五态覆盖:loading/success/empty/error/retry;
+ * 竞态守卫:响应落地时组织已切换则丢弃,防止旧组织数据串台。
  */
 export function OrgDistributionCard({ orgId, canWithdraw }: OrgDistributionCardProps) {
   const [items, setItems] = useState<SkillDistribution[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  const orgIdRef = useRef(orgId);
+  useEffect(() => {
+    orgIdRef.current = orgId;
+  }, [orgId]);
 
   const refresh = useCallback(async () => {
+    const requestOrgId = orgId;
     setLoading(true);
     setError(null);
     try {
-      setItems(await api.listSkillDistributions(orgId));
+      const list = await api.listSkillDistributions(requestOrgId);
+      if (orgIdRef.current !== requestOrgId) return;
+      setItems(list);
     } catch (caught) {
+      if (orgIdRef.current !== requestOrgId) return;
       setError(
         caught instanceof ApiClientError
           ? caught.message
