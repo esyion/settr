@@ -4,6 +4,7 @@ pub mod fs_utils;
 pub mod local_file;
 pub mod local_paths;
 pub mod local_watcher;
+pub mod log_retention;
 pub mod settings_store;
 pub mod skill_api;
 pub mod skill_dispatcher;

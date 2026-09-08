@@ -94,6 +94,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
+            // 日志保留策略:清理超期日志(KeepAll 轮转的旧文件会无限累积)。
+            infrastructure::log_retention::cleanup_expired_logs(app.handle());
+
             // 自启动静默启动:带 --hidden 参数时不显示主窗口,驻留托盘。
             // 窗口默认可见,此处尽早隐藏,极短闪现可接受。
             if std::env::args().any(|arg| arg == HIDE_AT_LAUNCH_ARG) {
