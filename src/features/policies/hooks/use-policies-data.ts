@@ -54,7 +54,7 @@ export function usePoliciesData(): PoliciesDataApi {
           policiesApi.listPolicyHistory(organizationId, "AGENT"),
           policiesApi.listPolicyHistory(organizationId, "CLAUDE"),
           policiesApi.listPolicyDistributions(organizationId),
-          policiesApi.getEffectivePolicies(organizationId, "0", "0"),
+          policiesApi.getEffectivePolicies(organizationId),
         ]);
         if (cancelled) return;
         setPendingPolicies(pending);

@@ -9,15 +9,10 @@ import { isTauriRuntime } from "@/lib/tauri";
 const ORG_POLICY_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
- * effective 接口对 team/project 的默认值:客户端当前没有团队/项目上下文,
- * 传 0 让服务端只按组织与成员两个维度解析。
- */
-const NO_SCOPE_ID = "0";
-
-/**
  * 组织策略自动落地:激活组织期间,周期性拉取生效的 AGENT/CLAUDE 策略
  * 并写入本地规则文档的托管区块;切回个人空间时清除托管区块。
  *
+ * 生效内容由服务端按 MEMBER > TEAM > ORGANIZATION 聚合解析,客户端不传团队参数(规格 §6.5)。
  * 失败(离线、权限变化)静默降级,下一轮重试;首次挂载且从未进入过组织时
  * 不做清除,避免登录引导阶段误删。
  */
@@ -39,11 +34,7 @@ export function useOrgPolicySync() {
     let cancelled = false;
     const run = async () => {
       try {
-        const effective = await policiesApi.getEffectivePolicies(
-          organizationId,
-          NO_SCOPE_ID,
-          NO_SCOPE_ID,
-        );
+        const effective = await policiesApi.getEffectivePolicies(organizationId);
         if (cancelled) return;
         await applyOrgPolicyToNative({
           agent: effective.agent?.content ?? null,

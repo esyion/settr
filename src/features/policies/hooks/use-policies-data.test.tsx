@@ -9,6 +9,7 @@ vi.mock("@/lib/api-client", () => ({
     listPolicyReviewRequests: vi.fn(),
     listPolicyHistory: vi.fn(),
     listPolicyDistributions: vi.fn(),
+    getEffectivePolicies: vi.fn(),
   },
   ApiClientError: class extends Error {},
 }));
@@ -31,6 +32,10 @@ describe("usePoliciesData", () => {
     (api.listPolicyReviewRequests as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     (api.listPolicyHistory as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     (api.listPolicyDistributions as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (api.getEffectivePolicies as ReturnType<typeof vi.fn>).mockResolvedValue({
+      agent: null,
+      claude: null,
+    });
     useWorkspaceStore.getState().setOrganizations([
       { id: "org-1", name: "Org 1", ownerUserId: "u1" },
     ]);
@@ -38,6 +43,10 @@ describe("usePoliciesData", () => {
     const { result } = renderHook(() => usePoliciesData());
     await waitFor(() => {
       expect(result.current.organizationId).toBe("org-1");
+    });
+    // 生效规范由服务端聚合解析,客户端不传团队参数(规格 §6.5)
+    await waitFor(() => {
+      expect(api.getEffectivePolicies).toHaveBeenCalledWith("org-1");
     });
   });
 });

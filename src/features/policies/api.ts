@@ -39,8 +39,8 @@ export function applyOrgPolicyToNative(input: {
  * policies feature API 客户端。
  */
 export const policiesApi = {
-  getEffectivePolicies: (orgId: string, teamId: string, projectId: string) =>
-    api.getEffectivePolicies(orgId, teamId, projectId),
+  /** 获取当前成员的生效规范(服务端聚合,不传团队参数——规格 §6.5)。 */
+  getEffectivePolicies: (orgId: string) => api.getEffectivePolicies(orgId),
   listPolicyReviewRequests: (orgId: string) =>
     api.listPolicyReviewRequests(orgId),
   submitPolicyDraft: (
