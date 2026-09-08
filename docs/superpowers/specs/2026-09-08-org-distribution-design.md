@@ -98,7 +98,7 @@ TEAM_ADMIN                             → skill:distribute
 契约变更(直接改,不做兼容):
 
 - `CreateSkillRequest` 增加 `ownerScope`(PERSONAL/ORG,缺省 PERSONAL)+ `orgId`(ownerScope=ORG 时必填,由请求体显式传入;创建接口 `/api/v1/skills` 本身无 org 前缀,归属以请求体为准)
-- `SkillServiceImpl.create`:ORG 分支校验 `skill:manage` + 活跃成员,落 `ownerScope=ORG, orgId, createdBy`;**不写个人订阅行**(org 资产可见性走成员资格+分发,不靠订阅)
+- `SkillServiceImpl.create`:ORG 分支校验 `skill:manage` + 活跃成员,落 `ownerScope=ORG, orgId, createdBy, ownerUserId=创建者`;**不写个人订阅行**(org 资产可见性走成员资格+分发,不靠订阅)。ownerUserId 必须落库:§5.3 可见性公式为 `活跃成员 ∧ (owner ∨ 分发 ∨ 订阅)`,导入后尚无分发/订阅,若 owner 为空则创建者在组织列表里看不到刚导入的资产
 - `SkillImportServiceImpl`:GitHub / skills.sh / ZIP 三入口同参数支持目标 org
 - `SkillVersionServiceImpl.publish`:PERSONAL 维持"仅 owner 本人";ORG 分支改校验 `skill:manage`(原 owner-personal 硬校验移入 PERSONAL 分支)
 - `update`/`delete` 同规则双分支;delete 增加 D6 活跃分发检查
