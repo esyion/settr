@@ -94,6 +94,10 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
+            // panic 崩溃留痕:release 为 panic=abort,崩溃前把信息写入日志目录
+            // panic.log(应在最早期安装,覆盖后续所有启动逻辑)。
+            infrastructure::panic_report::install_panic_hook(app.handle());
+
             // 日志保留策略:清理超期日志(KeepAll 轮转的旧文件会无限累积)。
             infrastructure::log_retention::cleanup_expired_logs(app.handle());
 
