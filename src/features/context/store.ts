@@ -120,8 +120,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           // 仅当仍停留在该组织时写入,防止切换竞态写入过期权限
           if (get().organizationId === orgId) set({ myPermissions: my });
         } catch {
-          // 拉取失败按无权限处理(按钮隐藏而非禁用,宁少勿多),不阻塞组织切换
-          set({ myPermissions: null });
+          // 失败按无权限处理(按钮隐藏而非禁用,宁少勿多),不阻塞组织切换;
+          // 同样带组织守卫,避免慢失败的旧请求清掉新组织的权限
+          if (get().organizationId === orgId) set({ myPermissions: null });
         }
       },
 
