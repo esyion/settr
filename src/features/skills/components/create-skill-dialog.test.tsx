@@ -15,8 +15,8 @@ vi.mock("@/features/context/store", () => ({
 
 describe("CreateSkillDialog org binding", () => {
   beforeEach(() => {
-    vi.mocked(api.createSkill).mockClear();
-    vi.mocked(api.createSkill).mockResolvedValue({ id: "1" });
+    vi.mocked(api.createSkill).mockReset();
+    vi.mocked(api.createSkill).mockResolvedValue({ id: "1" } as never);
   });
 
   it("组织态提交携带 ownerScope=ORG 与 orgId", async () => {
@@ -40,7 +40,7 @@ describe("CreateSkillDialog org binding", () => {
     fireEvent.click(screen.getByRole("button", { name: "创建" }));
     await waitFor(() => {
       expect(api.createSkill).toHaveBeenCalled();
-      const body = vi.mocked(api.createSkill).mock.calls[0][0] as Record<string, unknown>;
+      const body = vi.mocked(api.createSkill).mock.calls[0][0] as unknown as Record<string, unknown>;
       expect(body.ownerScope).toBeUndefined();
       expect(body.orgId).toBeUndefined();
     });
