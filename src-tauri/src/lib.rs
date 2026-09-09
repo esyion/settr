@@ -66,29 +66,37 @@ pub fn run() {
     // 单实例:Windows 走插件;macOS 系统本身保证单实例;Linux 由插件兜底,
     // 同时承接深链 URL 向既有实例的转发(deep-link 插件在运行态依赖该机制)。
     #[cfg(any(windows, target_os = "linux"))]
-    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+        // 回调运行在插件隐藏窗口的 WndProc 内(WM_COPYDATA 派发中)。此处若同步调用
+        // window.show/set_focus 或 emit,ShowWindow 与 WebView2 ExecuteScript 会嵌套进
+        // 该派发上下文,Windows 以 0xc000041d(用户回调异常)终止进程,表现为深链唤起
+        // 即闪退。因此本回调只收集参数并立即返回,实际工作延迟到独立线程执行。
+        let app = app.clone();
         // 二次启动若来自自启动(带 --hidden),保持静默,不弹主窗口。
-        if !_args.iter().any(|arg| arg == HIDE_AT_LAUNCH_ARG) {
-            if let Some(window) = app.get_webview_window("main") {
-                if let Err(error) = window.show() {
-                    log::error!("聚焦已有实例窗口失败: {error}");
-                }
-                if let Err(error) = window.set_focus() {
-                    log::error!("聚焦已有实例窗口失败: {error}");
-                }
-            }
-        }
-        let urls: Vec<String> = _args
+        let show_window = !args.iter().any(|arg| arg == HIDE_AT_LAUNCH_ARG);
+        let urls: Vec<String> = args
             .iter()
             .filter(|arg| arg.starts_with(RESET_DEEP_LINK_SCHEME))
             .cloned()
             .collect();
-        if !urls.is_empty() {
-            // 直接向所有窗口发送深链事件，无需调用 on_open_url
-            if let Err(error) = app.emit("deep-link://new-url", urls) {
-                log::error!("派发深链事件到已有实例失败: {error}");
+        std::thread::spawn(move || {
+            if show_window {
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Err(error) = window.show() {
+                        log::error!("聚焦已有实例窗口失败: {error}");
+                    }
+                    if let Err(error) = window.set_focus() {
+                        log::error!("聚焦已有实例窗口失败: {error}");
+                    }
+                }
             }
-        }
+            if !urls.is_empty() {
+                // 直接向所有窗口发送深链事件，无需调用 on_open_url
+                if let Err(error) = app.emit("deep-link://new-url", urls) {
+                    log::error!("派发深链事件到已有实例失败: {error}");
+                }
+            }
+        });
     }));
     builder
         .plugin(tauri_plugin_opener::init())
@@ -118,14 +126,11 @@ pub fn run() {
                 }
             }
 
-            let handle = app.handle().clone();
-            // 此回调已在正常启动时注册，用于处理深链 URL
-            app.deep_link().on_open_url(move |event| {
-                let urls: Vec<String> = event.urls().iter().map(|url| url.to_string()).collect();
-                if let Err(error) = handle.emit("deep-link://new-url", urls) {
-                    log::error!("派发深链事件失败: {error}");
-                }
-            });
+            // 注意：不要在此注册 deep_link().on_open_url()。该 API 实际是注册一个监听
+            // "deep-link://new-url" 的监听器，而单实例回调（运行态收到深链）也会 emit 同名
+            // 事件，监听器内再次 emit 同一事件会无限自递归，直至栈溢出闪退。
+            // 冷启动的深链由前端 readCurrentDeepLink()（plugin getCurrent）拉取，
+            // 运行态的深链由单实例回调 emit 后由前端监听器接收。
 
             let watcher = infrastructure::local_watcher::LocalFileWatcher::start(app.handle())
                 .map_err(std::io::Error::other)?;

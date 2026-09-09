@@ -58,6 +58,7 @@ export type AppDeepLink = ResetDeepLink | AcceptInviteDeepLink | null;
  * @returns 解析结果；无法识别返回 null
  */
 export function parseDeepLink(raw: unknown): AppDeepLink {
+  debugger;
   if (typeof raw !== "string" || raw.length === 0) return null;
   let url: URL;
   try {
@@ -91,7 +92,9 @@ export async function listenAppDeepLink(
 ): Promise<() => void> {
   if (!isTauriRuntime()) {
     return Promise.reject(
-      new Error("DESKTOP_RUNTIME_REQUIRED:请在 Agents Plus 桌面应用中使用此功能"),
+      new Error(
+        "DESKTOP_RUNTIME_REQUIRED:请在 Agents Plus 桌面应用中使用此功能",
+      ),
     );
   }
   const unlisten = await listen<string[]>(DEEP_LINK_EVENT, (event) => {
