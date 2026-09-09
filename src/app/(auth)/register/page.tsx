@@ -8,7 +8,10 @@ import {
   DesktopRequiredNotice,
 } from "@/features/auth/components/auth-page-shell";
 import { useDeviceIdentity } from "@/features/auth/use-device-identity";
-import { safeReturnUrl as pickSafeReturnUrl } from "@/lib/safe-return-url";
+import {
+  appendReturnUrl,
+  safeReturnUrl as pickSafeReturnUrl,
+} from "@/lib/safe-return-url";
 
 /**
  * 注册页面：填写邮箱、密码、确认密码并提交；注册成功后自动登录并跳转到概览页。
@@ -46,9 +49,15 @@ function RegisterContent() {
       <AuthFormPanel
         identity={device.identity}
         mode="register"
-        onSwitchMode={() => router.replace("/login")}
+        // 切到登录页时保留 returnUrl，被邀请人已有账号也不会丢失回跳目标。
+        onSwitchMode={() =>
+          router.replace(appendReturnUrl("/login", safeReturnUrl))
+        }
+        // 注册成功但自动登录失败时，登录页同样带回 returnUrl，登录完成仍回到邀请页。
         onAutoLoginFailed={() =>
-          router.replace("/login?notice=auto-login-failed")
+          router.replace(
+            appendReturnUrl("/login?notice=auto-login-failed", safeReturnUrl),
+          )
         }
         onAuthenticated={async () => {
           router.replace(safeReturnUrl ?? "/overview");

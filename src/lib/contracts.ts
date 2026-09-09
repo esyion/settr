@@ -162,7 +162,8 @@ export interface Invitation {
   email: string;
   roleId: string | null;
   teamIds: string[];
-  token: string;
+  /** 明文一次性邀请 token；仅创建邀请的响应携带（服务端只存哈希），列表等响应为 null。 */
+  token: string | null;
   expiresAt: string;
   status: InvitationStatus;
   createdAt: string;

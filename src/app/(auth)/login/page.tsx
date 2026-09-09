@@ -9,7 +9,10 @@ import {
 } from "@/features/auth/components/auth-page-shell";
 import { useDeviceIdentity } from "@/features/auth/use-device-identity";
 import { loadSession } from "@/lib/session-store";
-import { safeReturnUrl as pickSafeReturnUrl } from "@/lib/safe-return-url";
+import {
+  appendReturnUrl,
+  safeReturnUrl as pickSafeReturnUrl,
+} from "@/lib/safe-return-url";
 
 /**
  * 登录页面。
@@ -68,7 +71,10 @@ function LoginContent() {
         identity={device.identity}
         mode="login"
         initialMessage={initialMessage}
-        onSwitchMode={() => router.replace("/register")}
+        // 切到注册页时保留 returnUrl，被邀请人没有账号也不会丢失回跳目标。
+        onSwitchMode={() =>
+          router.replace(appendReturnUrl("/register", safeReturnUrl))
+        }
         onAuthenticated={async () => {
           router.replace(safeReturnUrl ?? "/overview");
         }}
