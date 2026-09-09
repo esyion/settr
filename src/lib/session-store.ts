@@ -52,13 +52,49 @@ export async function saveSession(session: AuthSession): Promise<void> {
     throw new Error("SESSION_NOT_PERSISTED:登录会话未能写入系统凭据存储");
   }
   memorySession = session;
+  notifySessionChanged(session);
 }
 
 export async function clearSession(): Promise<void> {
   await invokeNative("clear_auth_session");
   memorySession = null;
+  notifySessionChanged(null);
 }
 
 export function getMemorySession(): AuthSession | null {
   return memorySession ?? null;
+}
+
+/** 会话变化监听器:参数为新会话;登出时为 null。 */
+type SessionChangeListener = (session: AuthSession | null) => void;
+
+const sessionListeners = new Set<SessionChangeListener>();
+
+/**
+ * 订阅会话变化(登录、token 轮换、登出都会触发);返回取消订阅函数。
+ *
+ * @param listener 变化回调
+ */
+export function onSessionChanged(
+  listener: SessionChangeListener,
+): () => void {
+  sessionListeners.add(listener);
+  return () => {
+    sessionListeners.delete(listener);
+  };
+}
+
+/**
+ * 在会话写入/清除后向订阅者广播(失败不阻断会话写入主流程)。
+ *
+ * @param session 新会话;登出时为 null
+ */
+function notifySessionChanged(session: AuthSession | null): void {
+  for (const listener of [...sessionListeners]) {
+    try {
+      listener(session);
+    } catch (error) {
+      console.warn("会话变化监听器执行失败:", error);
+    }
+  }
 }

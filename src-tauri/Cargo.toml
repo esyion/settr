@@ -32,7 +32,12 @@ tauri-plugin-global-shortcut = "2"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "gzip", "brotli"] }
+# "stream": 组织推送(SSE)需要流式读取响应体;长连接不适用一次性 text() 读取。
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "gzip", "brotli", "stream"] }
+# SSE 字节流适配 PushStream 端口(StreamExt)。
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+# 推送连接循环的停止信号(sync)与退避睡眠(time);异步测试另需 rt/macros。
+tokio = { version = "1", features = ["rt", "sync", "time", "macros"] }
 sha2 = "0.10"
 notify = "8"
 uuid = { version = "1", features = ["v4", "fast-rng", "serde"] }

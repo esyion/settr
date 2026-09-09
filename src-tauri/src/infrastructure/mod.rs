@@ -14,4 +14,5 @@ pub mod skill_installer;
 pub mod skill_paths;
 pub mod skill_session;
 pub mod skill_state;
+pub mod sse_client;
 pub mod tray;

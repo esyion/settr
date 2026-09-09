@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { api, ApiClientError } from "@/lib/api-client";
+import { subscribeOrgContentChange } from "@/lib/push-bus";
 import type { SkillDistribution } from "@/lib/api-skill";
 
 export interface OrgDistributionCardProps {
@@ -59,6 +60,16 @@ export function OrgDistributionCard({ orgId, canWithdraw }: OrgDistributionCardP
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // 组织推送信号(skill 分发/撤回)→ 重拉分发列表;非本组织的信号忽略。
+  useEffect(
+    () =>
+      subscribeOrgContentChange((changedOrgId) => {
+        if (changedOrgId && changedOrgId !== orgId) return;
+        void refresh();
+      }),
+    [refresh, orgId],
+  );
 
   /** 撤回一条分发,成功后刷新列表;失败展示错误供重试。 */
   const handleWithdraw = async (id: string) => {

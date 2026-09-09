@@ -28,6 +28,7 @@ import {
 import { useSyncController as useSyncControllerInstance } from "@/features/sync/use-sync-controller";
 import { useWorkspaceBootstrap } from "@/features/context/hooks/use-workspace-context";
 import { useOrgPolicySync } from "@/features/policies/hooks/use-org-policy-sync";
+import { usePushEvents } from "@/features/policies/hooks/use-push-events";
 
 const PAGE_META: Record<string, string> = {
   "/overview": "概览",
@@ -55,6 +56,8 @@ export default function AppLayout({
   useWorkspaceBootstrap();
   // 激活组织期间把生效 AGENT/CLAUDE 策略物化到本地托管区块，切回个人时清除。
   useOrgPolicySync();
+  // 组织推送连接生命周期：服务端分发/撤回信号 → push-bus → 各数据中枢刷新。
+  usePushEvents();
   return (
       <SyncControllerProvider value={useSyncControllerInstance()}>
         <AppLayoutShell>{children}</AppLayoutShell>

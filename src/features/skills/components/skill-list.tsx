@@ -27,6 +27,7 @@ import { countByHarness, filterVisibleSkills } from "@/features/skills/skill-lis
 import { SkillRow, HarnessChip, readableError } from "@/features/skills/components/skill-row";
 import { useSkillStore } from "@/features/skills/store/skill-store";
 import { usePendingUpdates } from "@/features/skills/hooks/use-pending-updates";
+import { subscribeOrgContentChange } from "@/lib/push-bus";
 /**
  * Skill 列表:顶部动作 + harness chips + 行内 7 harness Toggle。
  * 双态(规格 §6.2):默认读订阅 store(个人态);传入 items/onRefreshOverride/onDistribute
@@ -96,6 +97,14 @@ export function SkillList(props: {
     }, 300);
     return () => clearTimeout(timer);
   }, [refresh, props.onRefreshOverride]);
+
+  // 组织推送信号(skill 分发/撤回)→ 刷新列表。个人态订阅列表合并了
+  // 用户全部组织的 ORG_SUBSCRIBE,任何组织的信号都需刷新;组织态刷新
+  // 走 onRefreshOverride,同样幂等安全。
+  useEffect(
+    () => subscribeOrgContentChange(() => void refresh()),
+    [refresh],
+  );
 
   /** 确认删除后执行,成功后刷新列表与待更新角标。 */
   const handleDelete = async () => {

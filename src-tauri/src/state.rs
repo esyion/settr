@@ -3,9 +3,10 @@
 //! 通过 Tauri 的 manage 注入;所有 command 从 State<'_, AppState> 拿到一份。
 //! 设置值放在 std RwLock 后:锁粒度仅覆盖内存读写,持久化 I/O 在锁外执行。
 
+use crate::application::push::PushCoordinator;
 use crate::application::settings::AppSettings;
 use crate::infrastructure::settings_store::SettingsStore;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 /// 全局应用状态。
 pub struct AppState {
@@ -13,6 +14,9 @@ pub struct AppState {
     pub settings: RwLock<AppSettings>,
     /// 设置持久化适配器(文件路径已在启动时解析)。
     pub settings_store: SettingsStore,
+    /// 组织推送连接协调器(Arc 供后台循环的退出回调与事件出口共享;
+    /// 同一时刻至多一条 SSE 连接)。
+    pub push: Arc<PushCoordinator>,
 }
 
 impl AppState {
@@ -29,6 +33,7 @@ impl AppState {
         Self {
             settings: RwLock::new(settings),
             settings_store,
+            push: Arc::new(PushCoordinator::default()),
         }
     }
 }

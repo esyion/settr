@@ -5,6 +5,7 @@ import { ApiClientError } from "@/lib/api-client";
 import { useWorkspaceStore } from "@/features/context/store";
 import { toast } from "sonner";
 import { policiesApi } from "@/features/policies/api";
+import { subscribeOrgContentChange } from "@/lib/push-bus";
 import type {
   EffectivePolicies,
   PolicyDistribution,
@@ -86,6 +87,17 @@ export function usePoliciesData(): PoliciesDataApi {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // 组织推送信号(分发/撤回/成员关系变化)→ 重拉本页政策数据;
+  // 非当前组织的信号忽略。
+  useEffect(
+    () =>
+      subscribeOrgContentChange((changedOrgId) => {
+        if (changedOrgId && changedOrgId !== organizationId) return;
+        void reload();
+      }),
+    [reload, organizationId],
+  );
 
   const submitPolicyChange = useCallback(
     async (input: {

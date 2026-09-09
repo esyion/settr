@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { OrgDistributionCard } from "./org-distribution-card";
 import { api } from "@/lib/api-client";
+import { notifyOrgContentChange, resetPushBusForTest } from "@/lib/push-bus";
 
 vi.mock("@/lib/api-client", () => ({
   api: {
@@ -12,7 +13,10 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 describe("OrgDistributionCard", () => {
-  beforeEach(() => vi.mocked(api.listSkillDistributions).mockReset());
+  beforeEach(() => {
+    vi.mocked(api.listSkillDistributions).mockReset();
+    resetPushBusForTest();
+  });
 
   it("空列表渲染空态", async () => {
     vi.mocked(api.listSkillDistributions).mockResolvedValue([]);
@@ -73,5 +77,28 @@ describe("OrgDistributionCard", () => {
     vi.mocked(api.listSkillDistributions).mockResolvedValue([]);
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     await waitFor(() => expect(screen.getByText("暂无分发")).toBeInTheDocument());
+  });
+
+  it("非本组织的推送信号不触发刷新", async () => {
+    vi.mocked(api.listSkillDistributions).mockResolvedValue([]);
+    render(<OrgDistributionCard orgId="10" canWithdraw />);
+    await waitFor(() => expect(screen.getByText("暂无分发")).toBeInTheDocument());
+
+    notifyOrgContentChange("999");
+    // 越过总线的 1 秒合并窗口后确认未被刷新。
+    await new Promise((resolve) => setTimeout(resolve, 1_200));
+    expect(api.listSkillDistributions).toHaveBeenCalledTimes(1);
+  });
+
+  it("本组织的推送信号(合并窗口后)触发一次刷新", async () => {
+    vi.mocked(api.listSkillDistributions).mockResolvedValue([]);
+    render(<OrgDistributionCard orgId="10" canWithdraw />);
+    await waitFor(() => expect(screen.getByText("暂无分发")).toBeInTheDocument());
+
+    notifyOrgContentChange("10");
+    await waitFor(
+      () => expect(api.listSkillDistributions).toHaveBeenCalledTimes(2),
+      { timeout: 3_000 },
+    );
   });
 });
