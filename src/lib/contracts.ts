@@ -144,6 +144,21 @@ export interface TeamMembership {
   joinedAt: string;
 }
 
+/**
+ * 团队成员详情(含邮箱与归属成员状态),供团队成员面板展示。
+ * email 为 null 表示对应用户已被物理删除或不存在(早期数据兜底)。
+ */
+export interface TeamMemberView {
+  id: string;
+  teamId: string;
+  organizationMemberId: string;
+  userId: string;
+  email: string | null;
+  status: string;
+  joinedAt: string;
+  membershipStatus: string;
+}
+
 export type PolicyType = "AGENT" | "CLAUDE";
 
 export interface PolicyReviewRequest {

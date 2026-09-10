@@ -84,6 +84,10 @@ export const organizationApi = {
     request<import("@/lib/contracts").TeamMembership[]>(
       "/api/v1/teams/" + encodeURIComponent(teamId) + "/members",
     ),
+  listTeamMembers: (teamId: string) =>
+    request<import("@/lib/contracts").TeamMemberView[]>(
+      "/api/v1/teams/" + encodeURIComponent(teamId) + "/members/details",
+    ),
   addTeamMembership: (teamId: string, organizationMemberId: string) =>
     request<import("@/lib/contracts").TeamMembership>(
       "/api/v1/teams/" + encodeURIComponent(teamId) + "/members",

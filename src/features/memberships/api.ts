@@ -13,6 +13,7 @@ export const membershipsApi = {
   removeMembership: (orgId: string, memberId: string) =>
     api.removeMembership(orgId, memberId),
   listTeamMemberships: (teamId: string) => api.listTeamMemberships(teamId),
+  listTeamMembers: (teamId: string) => api.listTeamMembers(teamId),
   addTeamMembership: (teamId: string, organizationMemberId: string) =>
     api.addTeamMembership(teamId, organizationMemberId),
   enableTeamMembership: (teamId: string, memberId: string) =>

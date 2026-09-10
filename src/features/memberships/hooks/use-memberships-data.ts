@@ -5,7 +5,7 @@ import { ApiClientError } from "@/lib/api-client";
 import { useWorkspaceStore } from "@/features/context/store";
 import { toast } from "sonner";
 import { membershipsApi } from "@/features/memberships/api";
-import type { Membership, TeamMembership } from "@/lib/contracts";
+import type { Membership, TeamMemberView, TeamMembership } from "@/lib/contracts";
 import type { MembershipsDataApi } from "@/features/memberships/types";
 
 function readableError(error: unknown, fallback: string): string {
@@ -23,7 +23,7 @@ function readableError(error: unknown, fallback: string): string {
 export function useMembershipsData(teamId = ""): MembershipsDataApi {
   const organizationId = useWorkspaceStore((s) => s.organizationId);
   const [memberships, setMemberships] = useState<Membership[]>([]);
-  const [teamMemberships, setTeamMemberships] = useState<TeamMembership[]>([]);
+  const [teamMemberships, setTeamMemberships] = useState<TeamMemberView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -48,7 +48,8 @@ export function useMembershipsData(teamId = ""): MembershipsDataApi {
     };
   }, [organizationId]);
 
-  // 团队成员加载,teamId 变化时重新拉取
+  // 团队成员加载：使用含邮箱与归属成员状态的列表接口,
+  // 后端会自动过滤已离开组织的成员(deleted=true),避免出现孤儿数据。
   useEffect(() => {
     if (!teamId) {
       void Promise.resolve().then(() => setTeamMemberships([]));
@@ -57,7 +58,7 @@ export function useMembershipsData(teamId = ""): MembershipsDataApi {
     let cancelled = false;
     void (async () => {
       try {
-        const list = await membershipsApi.listTeamMemberships(teamId);
+        const list = await membershipsApi.listTeamMembers(teamId);
         if (cancelled) return;
         setTeamMemberships(list);
       } catch (caught) {
@@ -135,11 +136,11 @@ export function useMembershipsData(teamId = ""): MembershipsDataApi {
     async (organizationMemberId: string) => {
       if (!teamId) return;
       await run("添加到团队", async () => {
-        const tm = await membershipsApi.addTeamMembership(
-          teamId,
-          organizationMemberId,
-        );
-        setTeamMemberships((cur) => [...cur, tm]);
+        await membershipsApi.addTeamMembership(teamId, organizationMemberId);
+        // addTeamMembership 只返回关系 id,不含邮箱;为保持列表语义一致,
+        // 直接重新拉取一次团队成员详情,保证新增项带 email / membershipStatus。
+        const list = await membershipsApi.listTeamMembers(teamId);
+        setTeamMemberships(list);
       });
     },
     [teamId, run],

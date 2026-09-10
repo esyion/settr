@@ -1,17 +1,18 @@
 import type {
   Invitation,
   Membership,
+  TeamMemberView,
   TeamMembership,
 } from "@/lib/contracts";
 
-export type { Invitation, Membership, TeamMembership };
+export type { Invitation, Membership, TeamMemberView, TeamMembership };
 
 /**
  * memberships feature 数据中枢对外接口。
  */
 export interface MembershipsDataApi {
   memberships: Membership[];
-  teamMemberships: TeamMembership[];
+  teamMemberships: TeamMemberView[];
   organizationId: string;
   teamId: string;
   error: string | null;

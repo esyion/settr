@@ -33,7 +33,10 @@ import type { MembershipsDataApi } from "@/features/memberships/types";
 /**
  * 团队成员列表:展示当前团队成员并允许启用/停用/移除,以及添加成员。
  *
- * 添加成员：使用组织成员下拉选择要加入的人,避免手输 UUID。
+ * 添加成员:使用组织成员下拉选择要加入的人,避免手输 UUID。
+ *
+ * 每个成员展示:优先显示邮箱(成员可读);若邮箱缺失(早期数据)回退显示 userId。
+ * 同时附带归属成员状态(membershipStatus),便于识别\"已离开\"等异常。
  */
 export function TeamMembers({ data }: { data: MembershipsDataApi }) {
   const [addOpen, setAddOpen] = useState(false);
@@ -139,51 +142,62 @@ export function TeamMembers({ data }: { data: MembershipsDataApi }) {
           <p className="text-sm text-muted-foreground">该团队暂无成员</p>
         ) : (
           <ul className="space-y-2">
-            {data.teamMemberships.map((m) => (
-              <li
-                key={m.id}
-                className="flex items-center justify-between rounded-md border p-3 text-sm"
-              >
-                <div>
-                  <p className="font-medium">{m.organizationMemberId}</p>
-                  <p className="text-xs text-muted-foreground">
-                    状态:{m.status}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {m.status === "DISABLED" ? (
+            {data.teamMemberships.map((m) => {
+              const displayLabel = m.email ?? `用户 ${m.userId}`;
+              const membershipBadge =
+                m.membershipStatus && m.membershipStatus !== "ACTIVE"
+                  ? `成员已${m.membershipStatus === "DISABLED" ? "停用" : "离开"}`
+                  : null;
+              return (
+                <li
+                  key={m.id}
+                  className="flex items-center justify-between rounded-md border p-3 text-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium" title={displayLabel}>
+                      {displayLabel}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      团队状态:{m.status}
+                      {membershipBadge ? ` · ${membershipBadge}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {m.status === "DISABLED" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={data.busy !== null}
+                        onClick={() => void data.enableTeamMembership(m.id)}
+                      >
+                        启用
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={data.busy !== null}
+                        onClick={() => void data.disableTeamMembership(m.id)}
+                      >
+                        停用
+                      </Button>
+                    )}
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="ghost"
                       disabled={data.busy !== null}
-                      onClick={() => void data.enableTeamMembership(m.id)}
+                      onClick={() => void data.removeTeamMembership(m.id)}
                     >
-                      启用
+                      移除
                     </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={data.busy !== null}
-                      onClick={() => void data.disableTeamMembership(m.id)}
-                    >
-                      停用
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={data.busy !== null}
-                    onClick={() => void data.removeTeamMembership(m.id)}
-                  >
-                    移除
-                  </Button>
-                </div>
-              </li>
-            ))}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>
     </Card>
   );
 }
+
