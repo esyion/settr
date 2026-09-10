@@ -21,6 +21,8 @@ import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/features/app/components/app-sidebar";
 import { StatusBadge } from "@/components/status-badge";
 import { PendingUpdatesBadge } from "@/features/skills/components/pending-updates-badge";
+import { NotificationBell } from "@/features/notifications";
+
 import {
   SyncControllerProvider,
   useSyncController,
@@ -175,6 +177,7 @@ function AppLayoutShell({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-3">
             <StatusBadge status={controller.state.status} />
             <PendingUpdatesBadge />
+            <NotificationBell />
             <span className="hidden max-w-56 truncate text-sm text-muted-foreground sm:inline">
               {controller.state.user?.email || "—"}
             </span>

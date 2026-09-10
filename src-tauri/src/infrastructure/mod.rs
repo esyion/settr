@@ -16,3 +16,4 @@ pub mod skill_session;
 pub mod skill_state;
 pub mod sse_client;
 pub mod tray;
+pub mod notify_sink;

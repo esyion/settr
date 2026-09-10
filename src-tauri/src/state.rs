@@ -3,6 +3,7 @@
 //! 通过 Tauri 的 manage 注入;所有 command 从 State<'_, AppState> 拿到一份。
 //! 设置值放在 std RwLock 后:锁粒度仅覆盖内存读写,持久化 I/O 在锁外执行。
 
+use crate::application::notify::NotifyCoordinator;
 use crate::application::push::PushCoordinator;
 use crate::application::settings::AppSettings;
 use crate::infrastructure::settings_store::SettingsStore;
@@ -17,6 +18,8 @@ pub struct AppState {
     /// 组织推送连接协调器(Arc 供后台循环的退出回调与事件出口共享;
     /// 同一时刻至多一条 SSE 连接)。
     pub push: Arc<PushCoordinator>,
+    /// 用户维度推送连接协调器(通知通道；与组织推送正交,各自维护代际)。
+    pub notify: Arc<NotifyCoordinator>,
 }
 
 impl AppState {
@@ -34,6 +37,7 @@ impl AppState {
             settings: RwLock::new(settings),
             settings_store,
             push: Arc::new(PushCoordinator::default()),
+            notify: Arc::new(NotifyCoordinator::default()),
         }
     }
 }

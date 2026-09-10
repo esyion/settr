@@ -5,6 +5,8 @@ import { AppearanceSettings } from "./appearance-settings";
 import { ConnectionSettings } from "./connection-settings";
 import { DeviceSettings } from "./device-settings";
 import { SessionSettings } from "./session-settings";
+import { NotificationPreferences } from "@/features/notifications";
+
 import { StartupSettings } from "./startup-settings";
 
 /**
@@ -38,6 +40,7 @@ export function Settings({
       <StartupSettings />
       <ConnectionSettings />
       <DeviceSettings identity={identity} busy={busy} onRename={onRename} />
+      <NotificationPreferences />
       <SessionSettings busy={busy} onLogout={onLogout} />
     </div>
   );

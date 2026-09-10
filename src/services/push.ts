@@ -104,3 +104,96 @@ export async function onPushChange(
 ): Promise<UnlistenFn> {
   return listen<PushChangePayload>(PUSH_CHANGE_EVENT, (event) => handler(event.payload));
 }
+
+// ========== 用户维度推送(通知通道) ==========
+//
+// 与组织维度推送解耦,严格保持通知与组织内容变更正交。
+
+/** 用户维度通知信号事件名(与 src-tauri infrastructure/notify_sink.rs 约定一致)。 */
+export const PUSH_NOTIFY_EVENT = "push://notify";
+/** 用户维度通知通道连接状态事件名。 */
+export const PUSH_NOTIFY_STATUS_EVENT = "push://notify-status";
+
+/** push://notify 事件的载荷。 */
+export interface PushNotifyPayload {
+  /** 通知 ID 字符串(雪花跨边界) */
+  notificationId: string;
+  /** 业务分类字符串 */
+  category: string;
+  /** 渲染标题 */
+  title: string;
+  /** 渲染正文(可空) */
+  body: string | null;
+  /** 跳转目标(可空) */
+  deepLink: string | null;
+}
+
+/** push://notify-status 事件的载荷。 */
+export interface PushNotifyStatusPayload {
+  state: "connected" | "disconnected" | "unauthorized";
+}
+
+/** push_subscribe_user / push_unsubscribe_user / push_user_status 的响应。 */
+export interface PushNotifyStatusResult {
+  connected: boolean;
+}
+
+/** push_subscribe_user 入参。 */
+export interface PushSubscribeUserInput {
+  baseUrl: string;
+  accessToken: string;
+}
+
+/**
+ * 打开用户维度实时通知连接(SSE)。
+ *
+ * <p>重复调用会替换旧连接;凭据失效时 Rust 侧停止,
+ * 需以新 token 重新调用。
+ */
+export async function pushSubscribeUser(
+  input: PushSubscribeUserInput,
+): Promise<PushNotifyStatusResult> {
+  if (!isTauriRuntime()) {
+    throw new Error("DESKTOP_RUNTIME_REQUIRED:请在 Agents Plus 桌面应用中使用此功能");
+  }
+  return invokeNative<PushNotifyStatusResult>("push_subscribe_user", {
+    request: input,
+  });
+}
+
+/**
+ * 关闭用户维度实时通知连接(幂等):登出时调用。
+ */
+export async function pushUnsubscribeUser(): Promise<PushNotifyStatusResult> {
+  if (!isTauriRuntime()) {
+    throw new Error("DESKTOP_RUNTIME_REQUIRED:请在 Agents Plus 桌面应用中使用此功能");
+  }
+  return invokeNative<PushNotifyStatusResult>("push_unsubscribe_user");
+}
+
+/**
+ * 查询用户维度推送连接登记状态(供前端在窗口重载后对齐状态)。
+ */
+export async function pushUserStatus(): Promise<PushNotifyStatusResult> {
+  if (!isTauriRuntime()) {
+    throw new Error("DESKTOP_RUNTIME_REQUIRED:请在 Agents Plus 桌面应用中使用此功能");
+  }
+  return invokeNative<PushNotifyStatusResult>("push_user_status");
+}
+
+/** 订阅 push://notify 事件。 */
+export async function onPushNotify(
+  handler: (payload: PushNotifyPayload) => void,
+): Promise<UnlistenFn> {
+  return listen<PushNotifyPayload>(PUSH_NOTIFY_EVENT, (event) => handler(event.payload));
+}
+
+/** 订阅 push://notify-status 事件。 */
+export async function onPushNotifyStatus(
+  handler: (payload: PushNotifyStatusPayload) => void,
+): Promise<UnlistenFn> {
+  return listen<PushNotifyStatusPayload>(
+    PUSH_NOTIFY_STATUS_EVENT,
+    (event) => handler(event.payload),
+  );
+}
