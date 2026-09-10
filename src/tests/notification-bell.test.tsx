@@ -16,11 +16,29 @@ const TOKEN = "a".repeat(40);
 
 const replace = vi.fn();
 const markRead = vi.fn();
+const reload = vi.fn();
 
-// Popover 外壳替换为直渲染，聚焦列表项点击与跳转行为本身。
+// Popover 外壳替换为可开合的直渲染替身：popover-toggle 模拟用户打开面板，
+// 列表内容始终渲染，聚焦列表项点击、跳转与打开对账行为本身。
 vi.mock("@/components/ui/popover", () => ({
-  Popover: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
+  Popover: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
+    children: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+  }) => (
+    <div>
+      <button
+        type="button"
+        data-testid="popover-toggle"
+        aria-label="切换通知面板"
+        onClick={() => onOpenChange?.(!open)}
+      />
+      {children}
+    </div>
   ),
   PopoverTrigger: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -42,7 +60,7 @@ vi.mock("@/features/notifications/hooks/use-notifications", () => ({
     items: currentItems,
     unreadCount: currentItems.filter((n) => !n.read).length,
     loading: false,
-    reload: async () => {},
+    reload,
     markRead,
     markAllRead: async () => {},
   }),
@@ -117,6 +135,15 @@ describe("NotificationBell 深链跳转", () => {
       );
     });
     expect(markRead).not.toHaveBeenCalled();
+  });
+
+  it("打开通知面板时静默刷新列表（拉取对账兜底，不依赖断线提示）", () => {
+    currentItems = [makeNotification()];
+    render(<NotificationBell />);
+
+    fireEvent.click(screen.getByTestId("popover-toggle"));
+
+    expect(reload).toHaveBeenCalled();
   });
 
   it("深链协议或 host 非法（如外部 https 链接）时不做任何路由跳转", async () => {

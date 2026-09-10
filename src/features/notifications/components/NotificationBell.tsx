@@ -58,7 +58,15 @@ export function NotificationBell() {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        // 打开面板即静默拉取对账：实时信号丢失/通道自愈期间的偏差在用户
+        // 查看时收敛，无需任何断线提示 UI（拉取兜底，推送只降延迟）。
+        if (next) void reload();
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           type="button"

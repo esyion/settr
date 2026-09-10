@@ -1,10 +1,10 @@
 // features/notifications/store/notification-store.ts
-// 通知本地 store：列表 + 未读数 + 加载态。
+// 通知本地 store：列表 + 未读数 + 加载态 + 偏好。
 
 "use client";
 
 import { create } from "zustand";
-import type { NotificationDto } from "../types";
+import type { NotificationDto, NotificationPreferenceDto } from "../types";
 
 /**
  * 通知本地状态。
@@ -12,7 +12,8 @@ import type { NotificationDto } from "../types";
  * <ul>
  *   <li>items: 当前页可见通知（按 created_at DESC）;</li>
  *   <li>unreadCount: 未读条数（顶栏徽标 + 列表标头）;</li>
- *   <li>loading / error: 首屏与刷新态。</li>
+ *   <li>loading / error: 首屏与刷新态;</li>
+ *   <li>preference: 通知偏好快照（默认全开，设置页与实时通道共享）。</li>
  * </ul>
  */
 export interface NotificationState {
@@ -21,6 +22,7 @@ export interface NotificationState {
   nextCursor: string | null;
   loading: boolean;
   error: string | null;
+  preference: NotificationPreferenceDto;
 }
 
 interface NotificationActions {
@@ -28,6 +30,8 @@ interface NotificationActions {
   setUnreadCount: (count: number) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  /** 写入偏好快照（设置页加载/保存成功、实时通道初拉时调用）。 */
+  setPreference: (preference: NotificationPreferenceDto) => void;
   /** 把单条通知标记为已读（同步未读数）。 */
   markRead: (id: string) => void;
   /** 全部标记为已读（同步未读数）。 */
@@ -43,6 +47,8 @@ const initialState: NotificationState = {
   nextCursor: null,
   loading: false,
   error: null,
+  // 与后端 NotificationServiceImpl.DEFAULT_CHANNELS 对齐：读不到偏好时按全开兜底。
+  preference: { channels: { email: true, desktop: true }, categories: {} },
 };
 
 export const useNotificationStore = create<NotificationState & NotificationActions>(
@@ -53,6 +59,7 @@ export const useNotificationStore = create<NotificationState & NotificationActio
     setUnreadCount: (count) => set({ unreadCount: count }),
     setLoading: (loading) => set({ loading }),
     setError: (error) => set({ error }),
+    setPreference: (preference) => set({ preference }),
     markRead: (id) =>
       set((state) => {
         const next = state.items.map((item) =>

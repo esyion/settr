@@ -142,7 +142,16 @@ export function parseEnvelope<T>(response: {
   return envelope.data;
 }
 
-async function refreshAccessToken(): Promise<AuthSession | null> {
+/**
+ * 用 refresh token 换新的 access token；成功会写回会话并广播 onSessionChanged。
+ *
+ * <p>除 HTTP 请求的 401 自动重试外，实时推送通道收到 unauthorized 终态时
+ * 也调用本方法自救：刷新成功触发会话广播、由订阅方用新 token 重建连接；
+ * 刷新失败内部已 clearSession，同样经广播驱动各端退订。
+ *
+ * @returns 新会话；无会话或刷新失败返回 null
+ */
+export async function refreshAccessToken(): Promise<AuthSession | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       const session = await loadSession();

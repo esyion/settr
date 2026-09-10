@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { notificationsApi } from "../api";
+import { useNotificationStore } from "../store/notification-store";
 import type {
   NotificationPreferenceDto,
   NotificationPreferenceUpdate,
@@ -31,6 +32,8 @@ export function useNotificationPreference() {
     try {
       const next = await notificationsApi.getPreference();
       setPreference(next);
+      // 同步到全局 store：实时通道据此决定是否弹系统通知。
+      useNotificationStore.getState().setPreference(next);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -49,9 +52,11 @@ export function useNotificationPreference() {
       try {
         const next = await notificationsApi.updatePreference(input);
         setPreference(next);
+        useNotificationStore.getState().setPreference(next);
         setError(null);
       } catch (e) {
         setPreference(previous);
+        useNotificationStore.getState().setPreference(previous);
         setError(e instanceof Error ? e.message : String(e));
         throw e;
       }
