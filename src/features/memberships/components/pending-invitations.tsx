@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { membershipsApi } from "@/features/memberships/api";
 import { useWorkspaceStore } from "@/features/context/store";
@@ -34,7 +33,8 @@ export function PendingInvitations() {
     membershipsApi
       .listInvitations(organizationId)
       .then((list) => {
-        if (!cancelled) setItems(list);
+        // 兜底过滤 PENDING:后端应只返回待处理邀请,前端再保险一次避免脏数据误导管理员。
+        if (!cancelled) setItems(list.filter((inv) => inv.status === "PENDING"));
       })
       .catch(() => {
         if (!cancelled) setItems([]);
@@ -86,21 +86,14 @@ export function PendingInvitations() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge
-                    variant={inv.status === "PENDING" ? "default" : "outline"}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void revoke(inv.id)}
                   >
-                    {inv.status}
-                  </Badge>
-                  {inv.status === "PENDING" && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => void revoke(inv.id)}
-                    >
-                      <Trash2 />
-                      撤销
-                    </Button>
-                  )}
+                    <Trash2 />
+                    撤销
+                  </Button>
                 </div>
               </li>
             ))}
