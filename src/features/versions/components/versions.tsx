@@ -32,8 +32,10 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import type { Revision, SyncState } from "@/lib/contracts";
+import { copyTextToClipboard } from "@/services/clipboard";
 import { getDocumentFormatConfig } from "@/lib/document-formats";
 import { formatTime, shortHash } from "@/lib/format";
 import { useRevisionDiff } from "@/features/versions/hooks/use-revision-diff";
@@ -82,6 +84,25 @@ export function Versions({
       setPage(next.page);
     } finally {
       setLoadingMore(false);
+    }
+  }
+
+  /**
+   * 复制当前选中版本的内容到系统剪贴板。
+   *
+   * <p>
+   * 走 services/clipboard 统一封装（AGENTS.md §4.1 插件调用集中收口），
+   * 失败时 toast 兜底提示，不做静默吞错。
+   */
+  async function copyContent() {
+    if (!selected) return;
+    try {
+      await copyTextToClipboard(selected.content);
+      toast.success("版本内容已复制");
+    } catch (caught) {
+      toast.error(
+        caught instanceof Error ? caught.message : "复制失败",
+      );
     }
   }
 
@@ -214,9 +235,7 @@ export function Versions({
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    void navigator.clipboard?.writeText(selected.content)
-                  }
+                  onClick={() => void copyContent()}
                 >
                   <Copy />
                   复制内容

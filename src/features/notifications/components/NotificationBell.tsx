@@ -4,12 +4,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { parseDeepLink } from "@/lib/deep-link";
 import { useNotifications } from "../hooks/use-notifications";
 import { useNotificationStream } from "../hooks/use-notification-stream";
 import { NotificationList } from "./NotificationList";
@@ -28,16 +30,30 @@ export function NotificationBell() {
   const { items, unreadCount, loading, reload, markRead, markAllRead } =
     useNotifications();
   useNotificationStream();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
 
+  /**
+   * 点击单条通知：先补已读标记，再按深链 kind 跳转应用内部路由。
+   *
+   * <p>
+   * deepLink 形如 agentsplus://accept-invite?token=...，属于 OS 级自定义协议，
+   * 不能用 window.location 导航 WebView（自定义协议在 WebView 中行为不可预期，
+   * 也会绕过解析校验）。这里复用 deep-link.ts 的 parseDeepLink 做协议、host、
+   * token 长度校验，再映射为内部页面路由，与 DeepLinkRouter、(auth) 布局的处理一致；
+   * 非法或未知深链静默忽略。
+   */
   const handleItemClick = async (notification: NotificationDto) => {
     setOpen(false);
     if (!notification.read) {
       await markRead(notification.id);
     }
-    if (notification.deepLink) {
-      // 复用深链跳转 —— 与现有 deep-link.ts 解析逻辑一致
-      window.location.assign(notification.deepLink);
+    if (!notification.deepLink) return;
+    const link = parseDeepLink(notification.deepLink);
+    if (link?.kind === "accept-invite") {
+      router.replace("/accept-invite?token=" + encodeURIComponent(link.token));
+    } else if (link?.kind === "reset-password") {
+      router.replace("/reset-password?token=" + encodeURIComponent(link.token));
     }
   };
 
