@@ -11,6 +11,13 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
+/** 用轻量 stub 替代真实 Dialog，避免把 Radix Portal / Animate 拉进单测。 */
+vi.mock("@/features/context/components/create-organization-dialog", () => ({
+  CreateOrganizationDialog: (props: { open: boolean }) => (
+    <div data-testid="create-organization-dialog" data-open={props.open} />
+  ),
+}));
+
 const toastSuccess = vi.fn();
 vi.mock("sonner", () => ({
   toast: { success: (...args: unknown[]) => toastSuccess(...args) },
@@ -96,11 +103,14 @@ describe("WorkspaceSwitcher", () => {
     expect(clearOrganization).toHaveBeenCalledTimes(1);
   });
 
-  it("clicking '进入组织管理' navigates to /organization", async () => {
+  it("clicking '创建新组织' opens the CreateOrganizationDialog without navigating", async () => {
     const user = userEvent.setup();
     renderSwitcher({ scope: "personal" }, <WorkspaceSwitcher />);
+    const dialog = screen.getByTestId("create-organization-dialog");
+    expect(dialog).toHaveAttribute("data-open", "false");
     await user.click(screen.getByText("个人空间"));
-    await user.click(screen.getByText("进入组织管理"));
-    expect(push).toHaveBeenCalledWith("/organization");
+    await user.click(screen.getByText("创建新组织"));
+    expect(dialog).toHaveAttribute("data-open", "true");
+    expect(push).not.toHaveBeenCalled();
   });
 });

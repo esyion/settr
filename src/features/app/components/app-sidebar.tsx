@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import {
-  Building2,
   Cloud,
   FileClock,
   FolderTree,
@@ -26,7 +25,8 @@ import { WorkspaceSwitcher } from "@/features/app/components/workspace-switcher"
 import { useWorkspaceStore } from "@/features/context/store";
 import type { DeviceIdentity, DocumentFormat } from "@/lib/contracts";
 
-/** 个人空间下的导航组:工作区(概览/版本/设备/设置)+ 组织(加入或创建)。 */
+/** 个人空间下的导航组：工作区（概览/版本/设备/设置）。
+ *  创建/切换组织走 WorkspaceSwitcher 顶部菜单，不再在侧边栏留独立入口。 */
 const PERSONAL_GROUPS: NavMainGroup[] = [
   {
     label: "工作区",
@@ -38,18 +38,13 @@ const PERSONAL_GROUPS: NavMainGroup[] = [
       { href: "/settings", label: "设置", icon: SettingsIcon },
     ],
   },
-  {
-    label: "组织",
-    items: [{ href: "/organization", label: "加入或创建组织", icon: Building2 }],
-  },
 ];
 
-/** 组织空间下的导航组:组织概览 / 团队与项目 / 成员 / Skills / 规范 / 角色。 */
+/** 组织空间下的导航组：「团队与项目」作为默认首页顶到首位，去掉冗余的「组织概览」入口。 */
 const ORGANIZATION_GROUPS: NavMainGroup[] = [
   {
     label: "组织空间",
     items: [
-      { href: "/organization", label: "组织概览", icon: Building2 },
       { href: "/organization/teams", label: "团队与项目", icon: FolderTree },
       { href: "/organization/memberships", label: "成员", icon: UserPlus },
       { href: "/organization/skills", label: "Skills", icon: Package },
@@ -60,11 +55,11 @@ const ORGANIZATION_GROUPS: NavMainGroup[] = [
 ];
 
 /**
- * 主应用侧边栏的组合层:Header = WorkspaceSwitcher,Content = NavMain,Footer = UserMenu。
- * 全部数据由 props 注入,自身只读 usePathname 和 useWorkspaceStore 用于路由高亮和分组切换。
+ * 主应用侧边栏的组合层：Header = WorkspaceSwitcher，Content = NavMain，Footer = UserMenu。
+ * 全部数据由 props 注入，自身只读 usePathname 和 useWorkspaceStore 用于路由高亮和分组切换。
  *
- * `format` 通过 destructure rename 在本地绑定为 `_format`,表达"故意不使用",
- * 外部 prop 名仍为 `format`,调用方(layout / 测试)无需修改。
+ * `format` 通过 destructure rename 在本地绑定为 `_format`，表达"故意不使用"，
+ * 外部 prop 名仍为 `format`，调用方（layout / 测试）无需修改。
  */
 export function AppSidebar({
   identity,

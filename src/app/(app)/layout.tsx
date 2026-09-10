@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -45,7 +45,7 @@ const PAGE_META: Record<string, string> = {
  * 已登录应用的路由组布局：
  * <ul>
  *   <li>挂载一次同步控制器（心跳 / 本地文件监听 / 全局刷新），通过 Context 暴露给所有子页面；</li>
- *   <li>渲染 shadcn Sidebar + 顶部栏 + 面包屑，统一顶部状态徽标和退出登录入口；</li>
+ *   <li>渲染 shadcn Sidebar + 顶部栏 + 面包屑，统一顶部状态徽标；</li>
  *   <li>未登录或非 Tauri 环境时拦截跳转，避免子页面再次重复处理登录态。</li>
  * </ul>
  */
@@ -181,15 +181,6 @@ function AppLayoutShell({ children }: { children: React.ReactNode }) {
             <span className="hidden max-w-56 truncate text-sm text-muted-foreground sm:inline">
               {controller.state.user?.email || "—"}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void controller.logout()}
-              disabled={controller.busy === "logout"}
-            >
-              <LogOut />
-              退出
-            </Button>
           </div>
         </header>
         <div className="flex flex-1 flex-col">

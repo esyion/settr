@@ -147,7 +147,7 @@ function AcceptInviteContent() {
         {status === "success" && orgId && (
           <Button
             className="w-full"
-            onClick={() => router.push("/organization")}
+            onClick={() => router.push("/organization/teams")}
           >
             <Building2 />
             进入组织

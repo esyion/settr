@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Building2, ChevronsUpDown, Cloud, LogOut, User } from "lucide-react";
+import { useState } from "react";
+import { Building2, ChevronsUpDown, Cloud, LogOut, Plus, User } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,14 +24,16 @@ import {
   LeaveOrganizationDialog,
   useLeaveOrganizationDialog,
 } from "@/features/context/components/leave-organization-dialog";
+import { CreateOrganizationDialog } from "@/features/context/components/create-organization-dialog";
 import { toast } from "sonner";
 
-/** AppSidebar 顶部的品牌 + scope 切换控件：对齐 shadcn TeamSwitcher。 */
+/** AppSidebar 顶部的品牌 + scope 切换控件：对齐 shadcn TeamSwitcher。
+ *  创建组织的入口以 Dialog 形式内联在菜单里，不再跳 /organization。 */
 export function WorkspaceSwitcher() {
   const ctx = useWorkspaceStore();
-  const router = useRouter();
   const { isMobile } = useSidebar();
   const leaveDialog = useLeaveOrganizationDialog();
+  const [createOpen, setCreateOpen] = useState(false);
 
   const isOrg = ctx.scope === "organization";
   const title = isOrg
@@ -130,11 +132,11 @@ export function WorkspaceSwitcher() {
             ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => router.push("/organization")}
+              onClick={() => setCreateOpen(true)}
               className="flex items-center gap-2"
             >
-              <Building2 className="size-4" />
-              进入组织管理
+              <Plus className="size-4" />
+              创建新组织
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -145,7 +147,7 @@ export function WorkspaceSwitcher() {
         onClose={leaveDialog.close}
         onConfirm={leaveDialog.confirm}
       />
+      <CreateOrganizationDialog open={createOpen} onOpenChange={setCreateOpen} />
     </SidebarMenu>
   );
 }
-

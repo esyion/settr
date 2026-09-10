@@ -60,9 +60,10 @@ describe("AppSidebar", () => {
     renderSidebar({ scope: "personal" });
     expect(screen.getByTestId("workspace-switcher")).toBeInTheDocument();
     expect(screen.getByTestId("user-menu")).toBeInTheDocument();
-    // 工作区 + 组织 两个 group label 都应可见
+    // personal scope 下仅暴露「工作区」组；组织入口已收敛到 WorkspaceSwitcher 顶部菜单。
     expect(screen.getByText("工作区")).toBeInTheDocument();
-    expect(screen.getByText("组织")).toBeInTheDocument();
+    expect(screen.queryByText("组织")).not.toBeInTheDocument();
+    expect(screen.queryByText("组织空间")).not.toBeInTheDocument();
   });
 
   it("renders only 组织空间 group when scope is organization", () => {
@@ -74,5 +75,7 @@ describe("AppSidebar", () => {
     expect(screen.getByText("组织空间")).toBeInTheDocument();
     expect(screen.queryByText("工作区")).not.toBeInTheDocument();
     expect(screen.queryByText("组织")).not.toBeInTheDocument();
+    // 「组织概览」已并入 /organization/teams，不再作为独立菜单项出现。
+    expect(screen.queryByText("组织概览")).not.toBeInTheDocument();
   });
 });
