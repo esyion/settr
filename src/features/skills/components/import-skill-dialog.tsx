@@ -203,7 +203,7 @@ function ZipForm({
         {file && <p className="text-xs text-muted-foreground">已选:{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
       </div>
       <div className="grid gap-1.5">
-        <Label>名称(全局唯一)</Label>
+        <Label>名称({binding ? "组织内唯一" : "账户内唯一"})</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="my-skill" disabled={submitting} />
       </div>
       <DialogFooter>
