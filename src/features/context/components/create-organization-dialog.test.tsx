@@ -34,7 +34,9 @@ describe("CreateOrganizationDialog", () => {
   it("calls createOrganization then refresh then setOrganization, finally closes the dialog", async () => {
     vi.mocked(api.createOrganization).mockResolvedValue(newOrg);
     vi.mocked(api.listMyOrganizations).mockResolvedValue([newOrg]);
-    const setOrganization = vi.fn();
+    const setOrganization = vi.fn(
+      useWorkspaceStore.getState().setOrganization,
+    );
     useWorkspaceStore.setState({ setOrganization });
 
     const user = userEvent.setup();
@@ -58,7 +60,7 @@ describe("CreateOrganizationDialog", () => {
 
   it("surfaces an ApiClientError message and keeps the dialog open", async () => {
     vi.mocked(api.createOrganization).mockRejectedValue(
-      new ApiClientError("conflict", "组织名称已被占用"),
+      new ApiClientError("组织名称已被占用", 40901, 409, null, null),
     );
 
     const user = userEvent.setup();

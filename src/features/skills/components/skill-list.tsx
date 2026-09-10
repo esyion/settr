@@ -40,7 +40,7 @@ export function SkillList(props: {
   onRefreshOverride?: () => void | Promise<void>;
   /** 传入(组织态)时作为列表 loading 态,避免首屏闪烁空态文案。 */
   loading?: boolean;
-  /** 传入(组织态 + skill:distribute 权限)时,行内渲染"分发"动作。 */
+  /** 传入(组织态 + canDistributeSkill 能力位)时,行内渲染"分发"动作。 */
   onDistribute?: (skill: Skill) => void;
 }) {
   const router = useRouter();

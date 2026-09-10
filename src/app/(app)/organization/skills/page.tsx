@@ -9,26 +9,20 @@ import { SkillDistributeDialog } from "@/features/skills/components/skill-distri
 import { OrgDistributionCard } from "@/features/skills/components/org-distribution-card";
 import { useOrgSkills } from "@/features/skills/hooks/use-org-skills";
 import { useWorkspaceStore } from "@/features/context/store";
+import { useCapability } from "@/features/context/hooks/use-capability";
 import { api } from "@/lib/api-client";
 import type { Skill } from "@/lib/contracts";
 
 /**
  * 组织空间 skill 管理页:数据源为组织可见 skill(GET /skills?scope=ORG),
  * 创建/导入/发布与个人态共用组件(归属自动绑定当前组织);
- * 顶部为组织分发记录卡片,行内"分发"入口按 skill:distribute 权限显隐(规格 §6.2/§6.3)。
+ * 顶部为组织分发记录卡片,行内"分发"入口按 canDistributeSkill 能力位显隐(规格 §6.2/§6.3)。
  */
 export default function OrganizationSkillsPage() {
   const organizationId = useWorkspaceStore((s) => s.organizationId);
-  // 权限显隐在 selector 内从 myPermissions 计算(org 级或任一 team 级命中),
-  // 保证权限落地时触发重渲染;目标级权限由后端逐请求裁决。
-  const canDistribute = useWorkspaceStore((s) => {
-    const my = s.myPermissions;
-    if (!my) return false;
-    return (
-      my.orgLevel.includes("skill:distribute") ||
-      my.teamLevel.some((t) => t.permissions.includes("skill:distribute"))
-    );
-  });
+  // 能力位由后端统一翻译(org 级 + 团队级合并),前端只读 boolean;
+  // 目标级权限仍由后端逐请求裁决。
+  const canDistribute = useCapability("canDistributeSkill");
   const org = useOrgSkills(organizationId);
   const [distributeTarget, setDistributeTarget] = useState<Skill | null>(null);
   const [distributing, setDistributing] = useState(false);

@@ -58,7 +58,7 @@ export function SkillRow({
   onToggleHarness: (harness: HarnessKey, enabled: boolean) => void;
   onOpen: () => void;
   onDelete: () => void;
-  /** 提供时(组织态 + skill:distribute 权限)渲染行内"分发"动作。 */
+  /** 提供时(组织态 + canDistributeSkill 能力位)渲染行内"分发"动作。 */
   onDistribute?: () => void;
 }) {
   const sourceTag = sourceTypeLabel(skill.sourceType);

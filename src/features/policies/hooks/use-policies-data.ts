@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiClientError } from "@/lib/api-client";
 import { useWorkspaceStore } from "@/features/context/store";
+import { useCapability } from "@/features/context/hooks/use-capability";
 import { toast } from "sonner";
 import { policiesApi } from "@/features/policies/api";
 import { subscribeOrgContentChange } from "@/lib/push-bus";
@@ -25,17 +26,9 @@ function readableError(error: unknown, fallback: string): string {
  */
 export function usePoliciesData(): PoliciesDataApi {
   const organizationId = useWorkspaceStore((s) => s.organizationId);
-  // 直接在 selector 内从 myPermissions 计算(org 级或任一 team 级命中即可见),
-  // 保证权限落地/切换组织时触发重渲染;目标级权限仍由后端逐请求裁决。
-  // 注:store.hasPermission 引用恒稳,订阅它不会触发重渲染,不可用在此处。
-  const canDistributePolicy = useWorkspaceStore((s) => {
-    const my = s.myPermissions;
-    if (!my) return false;
-    return (
-      my.orgLevel.includes("policy:distribute") ||
-      my.teamLevel.some((t) => t.permissions.includes("policy:distribute"))
-    );
-  });
+  // 能力位由后端统一翻译(org 级 + 团队级合并),前端只读 boolean;
+  // 目标级权限仍由后端逐请求裁决。
+  const canDistributePolicy = useCapability("canDistributePolicy");
   const [pendingPolicies, setPendingPolicies] = useState<PolicyReviewRequest[]>(
     [],
   );

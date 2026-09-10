@@ -28,8 +28,8 @@ function readableError(error: unknown, fallback: string): string {
  *   <li>scope 决定侧边栏与数据源是个人还是组织；</li>
  *   <li>organizationId / organizationName 同步当前激活组织；</li>
  *   <li>organizations 缓存用户所属组织列表，避免每次切回都重新拉取；</li>
- *   <li>myPermissions 缓存当前组织的权限码汇总(切换组织时重拉,R4 不做推送失效),
- *       hasPermission 是分发/管理按钮显隐的唯一判定入口;数据缺失按无权限处理(宁少勿多);</li>
+ *   <li>myPermissions 缓存当前组织的能力位汇总(切换组织时重拉,R4 不做推送失效),
+ *       UI 通过 useCapability 读取 canXxx 布尔位;数据缺失按无权限处理(宁少勿多);</li>
  *   <li>loading / error 是 refresh 的请求态，供组织子路由守卫与切换器禁用触发器；</li>
  *   <li>setOrganizations 会校验当前 organizationId 是否仍合法，无效则降级回 personal。</li>
  * </ul>
@@ -53,10 +53,8 @@ interface WorkspaceState {
    * 激活组织则降级到个人空间；失败抛出错误由调用方决定提示。
    */
   leaveOrganization: (id: string) => Promise<void>;
-  /** 拉取当前组织的权限码汇总;仍停留在该组织时才写入,失败降级为 null。 */
+  /** 拉取当前组织的能力位汇总;仍停留在该组织时才写入,失败降级为 null。 */
   refreshMyPermissions: (orgId: string) => Promise<void>;
-  /** 判定当前工作区是否拥有指定权限码(org 级命中,或 teamId 对应的团队级命中)。 */
-  hasPermission: (code: string, teamId?: string) => boolean;
   /** 拉取最新组织列表并复校当前选择；任何组件均可通过 store 直接触发，无需经过 Context。 */
   refresh: () => Promise<void>;
   reset: () => void;
@@ -158,18 +156,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           // 同样带组织守卫,避免慢失败的旧请求清掉新组织的权限
           if (get().organizationId === orgId) set({ myPermissions: null });
         }
-      },
-
-      hasPermission: (code, teamId) => {
-        const my = get().myPermissions;
-        if (!my) return false;
-        if (my.orgLevel.includes(code)) return true;
-        if (teamId) {
-          return my.teamLevel.some(
-            (t) => t.teamId === teamId && t.permissions.includes(code),
-          );
-        }
-        return false;
       },
 
       refresh: async () => {

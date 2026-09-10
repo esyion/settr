@@ -26,7 +26,7 @@ export interface PoliciesDataApi {
   organizationId: string;
   error: string | null;
   busy: string | null;
-  /** 当前主体是否拥有 policy:distribute 权限(分发按钮显隐依据)。 */
+  /** 当前主体是否可分发规范版本(canDistributePolicy 能力位,分发按钮显隐依据)。 */
   canDistributePolicy: boolean;
   submitPolicyChange: (input: {
     policyType: "AGENT" | "CLAUDE";

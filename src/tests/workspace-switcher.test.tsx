@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { WorkspaceSwitcher } from "@/features/app/components/workspace-switcher";
@@ -87,6 +87,10 @@ describe("WorkspaceSwitcher", () => {
     );
     await user.click(screen.getByText("个人空间"));
     await user.click(screen.getByText("Acme Inc"));
+    await waitFor(() =>
+      expect(screen.getByText("切换到 Acme Inc")).toBeVisible(),
+    );
+    fireEvent.click(screen.getByText("切换到 Acme Inc").closest("[data-slot='dropdown-menu-item']")!);
     expect(setOrganization).toHaveBeenCalledWith("org-1");
     expect(toastSuccess).toHaveBeenCalledWith("已切换到 Acme Inc");
   });

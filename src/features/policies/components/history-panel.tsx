@@ -19,7 +19,7 @@ import type { PoliciesDataApi } from "@/features/policies/types";
 /**
  * 政策历史面板：挂载时自动加载 AGENT/CLAUDE 历史，
  * 用 Tabs 分开显示。版本列表按时间倒序展示;
- * APPROVED 版本对拥有 policy:distribute 权限的主体提供"分发"入口。
+ * APPROVED 版本对具备 canDistributePolicy 能力位的主体提供"分发"入口。
  */
 export function HistoryCard({ data }: { data: PoliciesDataApi }) {
   const [distributeTarget, setDistributeTarget] = useState<PolicyVersion | null>(

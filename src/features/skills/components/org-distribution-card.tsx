@@ -16,7 +16,7 @@ import type { SkillDistribution } from "@/lib/api-skill";
 
 export interface OrgDistributionCardProps {
   orgId: string;
-  /** 是否显示撤回动作(由 skill:distribute 权限决定)。 */
+  /** 是否显示撤回动作(由 canDistributeSkill 能力位决定)。 */
   canWithdraw: boolean;
 }
 
