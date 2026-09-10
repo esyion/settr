@@ -28,7 +28,7 @@ describe("useMembershipsData", () => {
 
   it("loads memberships when organizationId is set", async () => {
     (api.listMemberships as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: "m1", organizationId: "org-1", userId: "u1", status: "ACTIVE" },
+      { id: "m1", organizationId: "org-1", userId: "u1", email: "u1@example.com", status: "ACTIVE" },
     ]);
     useWorkspaceStore.getState().setOrganizations([
       { id: "org-1", name: "Org 1", ownerUserId: "u1" },

@@ -18,7 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Membership } from "@/lib/contracts";
+import {
+  MEMBERSHIP_STATUS,
+  membershipStatusLabel,
+  type Membership,
+} from "@/lib/contracts";
 import type { RolesDataApi } from "@/features/roles/types";
 
 /**
@@ -37,8 +41,10 @@ export function AssignRoleCard({
   const [organizationMemberId, setOrganizationMemberId] = useState("");
   const [roleId, setRoleId] = useState("");
 
+  // 仅展示可分配角色的成员:ACTIVE 或历史无状态数据(早期枚举缺失),
+  // DISABLED 与 REMOVED 成员已自动排除。
   const memberOptions = memberships.filter(
-    (m) => m.status === "ACTIVE" || m.status === undefined,
+    (m) => m.status === MEMBERSHIP_STATUS.ACTIVE || m.status === undefined,
   );
 
   return (
@@ -114,8 +120,7 @@ export function AssignRoleCard({
   );
 }
 
-/** 成员下拉项的展示标签:Membership 仅含 userId,前端裁短显示并附 ID 提示。 */
+/** 成员下拉项的展示标签:首选用户邮箱,缺失时回退到用户 ID(早期数据兜底)。 */
 function memberLabel(m: Membership): string {
-  const short = m.userId.length > 12 ? `${m.userId.slice(0, 8)}…` : m.userId;
-  return `${short} · ${m.status}`;
+  return `${m.email ?? `用户 ${m.userId}`} · ${membershipStatusLabel(m.status)}`;
 }

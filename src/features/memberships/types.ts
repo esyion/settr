@@ -1,11 +1,20 @@
 import type {
   Invitation,
   Membership,
+  MembershipStatusValue,
   TeamMemberView,
   TeamMembership,
 } from "@/lib/contracts";
 
 export type { Invitation, Membership, TeamMemberView, TeamMembership };
+
+// 重新暴露 membership 状态常量与类型,让 features 内部组件能就近导入。
+export {
+  MEMBERSHIP_STATUS,
+  MEMBERSHIP_STATUS_LABELS,
+  membershipStatusLabel,
+} from "@/lib/contracts";
+export type { MembershipStatusValue };
 
 /**
  * memberships feature 数据中枢对外接口。

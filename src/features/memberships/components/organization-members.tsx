@@ -10,11 +10,21 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import type { MembershipsDataApi } from "@/features/memberships/types";
+import {
+  MEMBERSHIP_STATUS,
+  membershipStatusLabel,
+  type MembershipsDataApi,
+} from "@/features/memberships/types";
 
 /**
- * 组织成员列表：展示当前组织的成员并允许启用/停用/移除。
- * 添加成员请通过邀请流程，详见 memberships 页右上角。
+ * 组织成员列表:展示当前组织的成员并允许启用/停用/移除。
+ * 添加成员请通过邀请流程,详见 memberships 页右上角。
+ *
+ * <p>数据约定(由后端负责):
+ * <ul>
+ *   <li>已移除(REMOVED)成员不在列表中返回,前端不做二次过滤;</li>
+ *   <li>列表项均带 {@code email},缺失时由后端置 null(早期数据兜底)。</li>
+ * </ul>
  */
 export function OrganizationMembers({ data }: { data: MembershipsDataApi }) {
   if (!data.organizationId) return null;
@@ -23,7 +33,7 @@ export function OrganizationMembers({ data }: { data: MembershipsDataApi }) {
       <CardHeader>
         <CardTitle>组织成员</CardTitle>
         <CardDescription>
-          {data.memberships.length} 位成员，状态控制访问。
+          {data.memberships.length} 位成员,状态控制访问。
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -31,7 +41,7 @@ export function OrganizationMembers({ data }: { data: MembershipsDataApi }) {
           <AlertCircle />
           <AlertTitle>添加成员请使用邀请</AlertTitle>
           <AlertDescription>
-            点击右上角「邀请成员」按钮，通过邮件发送邀请链接。
+            点击右上角「邀请成员」按钮,通过邮件发送邀请链接。
           </AlertDescription>
         </Alert>
         {data.memberships.length === 0 ? (
@@ -43,14 +53,16 @@ export function OrganizationMembers({ data }: { data: MembershipsDataApi }) {
                 key={m.id}
                 className="flex items-center justify-between rounded-md border p-3 text-sm"
               >
-                <div>
-                  <p className="font-medium">{m.userId}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium" title={m.email ?? m.userId}>
+                    {m.email ?? `用户 ${m.userId}`}
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    状态：{m.status}
+                    状态:{membershipStatusLabel(m.status)}
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  {m.status === "DISABLED" ? (
+                  {m.status === MEMBERSHIP_STATUS.DISABLED ? (
                     <Button
                       size="sm"
                       variant="outline"

@@ -132,7 +132,51 @@ export interface ApplyRemoteDocumentRequest {
 export interface Organization { id: string; name: string; ownerUserId: string; }
 export interface Team { id: string; organizationId: string; name: string; defaultTeam: boolean; }
 export interface Project { id: string; organizationId: string; teamId: string; name: string; }
-export interface Membership { id: string; organizationId: string; userId: string; status: string; }
+/**
+ * 组织成员状态。
+ *
+ * <p>枚举值与后端 {@code com.krmeow.agentsplus.common.enums.MembershipStatus} 对齐。
+ * 由于历史数据可能携带未知状态(早期枚举扩展),状态字段仍使用 string,
+ * 但消费方应通过 {@link MEMBERSHIP_STATUS} 常量做受控比较。
+ */
+export const MEMBERSHIP_STATUS = {
+    ACTIVE: "ACTIVE",
+    DISABLED: "DISABLED",
+    REMOVED: "REMOVED",
+} as const;
+
+export type MembershipStatusValue =
+    (typeof MEMBERSHIP_STATUS)[keyof typeof MEMBERSHIP_STATUS];
+
+/**
+ * 状态在 UI 上展示的中文标签。前端展示统一走这里,避免散落中英文混杂。
+ */
+export const MEMBERSHIP_STATUS_LABELS: Record<string, string> = {
+    [MEMBERSHIP_STATUS.ACTIVE]: "在用",
+    [MEMBERSHIP_STATUS.DISABLED]: "停用",
+    [MEMBERSHIP_STATUS.REMOVED]: "已移除",
+};
+
+/**
+ * 返回状态对应的中文标签;未知状态原样回退展示。
+ */
+export function membershipStatusLabel(status: string): string {
+    return MEMBERSHIP_STATUS_LABELS[status] ?? status;
+}
+
+/**
+ * 组织成员。
+ *
+ * <p>{@code email} 由列表接口通过 join {@code t_user} 提供,
+ * 为 {@code null} 表示对应用户被物理删除或不存在(早期数据兜底)。
+ */
+export interface Membership {
+    id: string;
+    organizationId: string;
+    userId: string;
+    email: string | null;
+    status: string;
+}
 export interface EffectivePolicy { versionId: string; content: string; sha256: string; sourceScope: string; }
 export interface EffectivePolicies { agent: EffectivePolicy | null; claude: EffectivePolicy | null; }
 

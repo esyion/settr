@@ -28,7 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import type { MembershipsDataApi } from "@/features/memberships/types";
+import {
+  MEMBERSHIP_STATUS,
+  membershipStatusLabel,
+  type MembershipsDataApi,
+} from "@/features/memberships/types";
 
 /**
  * 团队成员列表:展示当前团队成员并允许启用/停用/移除,以及添加成员。
@@ -55,6 +59,8 @@ export function TeamMembers({ data }: { data: MembershipsDataApi }) {
   const existingMemberIds = new Set(
     data.teamMemberships.map((m) => m.organizationMemberId),
   );
+  // 仅展示"未加入本团队"的成员:REMOVED 成员由后端负责排除,
+  // 前端不再重复过滤业务状态。
   const availableMembers = data.memberships.filter(
     (m) => !existingMemberIds.has(m.id),
   );
@@ -111,7 +117,7 @@ export function TeamMembers({ data }: { data: MembershipsDataApi }) {
                   <SelectContent>
                     {availableMembers.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
-                        {m.userId} · {m.status}
+                        {m.email ?? `用户 ${m.userId}`} · {membershipStatusLabel(m.status)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -145,8 +151,8 @@ export function TeamMembers({ data }: { data: MembershipsDataApi }) {
             {data.teamMemberships.map((m) => {
               const displayLabel = m.email ?? `用户 ${m.userId}`;
               const membershipBadge =
-                m.membershipStatus && m.membershipStatus !== "ACTIVE"
-                  ? `成员已${m.membershipStatus === "DISABLED" ? "停用" : "离开"}`
+                m.membershipStatus && m.membershipStatus !== MEMBERSHIP_STATUS.ACTIVE
+                  ? `成员已${m.membershipStatus === MEMBERSHIP_STATUS.DISABLED ? "停用" : "离开"}`
                   : null;
               return (
                 <li
@@ -158,12 +164,12 @@ export function TeamMembers({ data }: { data: MembershipsDataApi }) {
                       {displayLabel}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      团队状态:{m.status}
+                      团队状态:{membershipStatusLabel(m.status)}
                       {membershipBadge ? ` · ${membershipBadge}` : ""}
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    {m.status === "DISABLED" ? (
+                    {m.status === MEMBERSHIP_STATUS.DISABLED ? (
                       <Button
                         size="sm"
                         variant="outline"
