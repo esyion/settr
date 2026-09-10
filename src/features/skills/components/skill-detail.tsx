@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, FileUp, History, Loader2, Package, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, FileUp, History, Loader2, Package, RefreshCw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -115,7 +115,22 @@ export function SkillDetail({ id }: { id: string }) {
             <h2 className="truncate text-2xl font-semibold tracking-tight">
               {skill.displayName || skill.name}
             </h2>
-            {skill.hasUpdateAvailable && <Badge variant="destructive">有更新</Badge>}
+            {skill.hasUpdateAvailable && (
+              skill.sourceUrl ? (
+                <a
+                  href={skill.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs text-destructive transition-colors hover:bg-destructive/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
+                  title="上游有可用更新,点此打开"
+                >
+                  有更新
+                  <ExternalLink className="size-3" />
+                </a>
+              ) : (
+                <Badge variant="destructive">有更新</Badge>
+              )
+            )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             <code className="rounded bg-muted px-1 py-0.5 text-xs">{skill.name}</code>
@@ -128,6 +143,17 @@ export function SkillDetail({ id }: { id: string }) {
           )}
         </div>
         <div className="flex flex-wrap gap-2">
+          {skill.hasUpdateAvailable && skill.sourceUrl && (
+            <Button variant="default" asChild>
+              <a
+                href={skill.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink /> 去上游获取
+              </a>
+            </Button>
+          )}
           <Button variant="outline" onClick={handleCheckUpdate}>
             <RefreshCw /> 检查更新
           </Button>
@@ -140,6 +166,12 @@ export function SkillDetail({ id }: { id: string }) {
         </div>
       </div>
 
+      {skill.hasUpdateAvailable && !skill.sourceUrl && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          检测到上游有可用更新,但当前 skill 没有上游来源链接(本地或 zip 上传)。
+          请从上游获取新内容,然后点「发布版本」上传新 ZIP。
+        </div>
+      )}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
