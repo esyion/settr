@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { InviteModal } from "./invite-modal";
+import { InviteModal } from "@/features/memberships/components/invite-modal";
 import { useWorkspaceStore } from "@/features/context/store";
 import { useTeamsData } from "@/features/teams";
 import { membershipsApi } from "@/features/memberships/api";

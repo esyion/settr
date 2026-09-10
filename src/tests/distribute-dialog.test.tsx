@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { DistributeDialog } from "./distribute-dialog";
+import { DistributeDialog } from "@/components/distribute-dialog";
 
 const teams = [{ id: "100", name: "平台组" }];
 const members = [{ id: "5", label: "张三" }];

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { CreateSkillDialog } from "./create-skill-dialog";
+import { CreateSkillDialog } from "@/features/skills/components/create-skill-dialog";
 import { useWorkspaceStore } from "@/features/context/store";
 import { api } from "@/lib/api-client";
 

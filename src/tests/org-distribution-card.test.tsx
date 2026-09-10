@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { OrgDistributionCard } from "./org-distribution-card";
+import { OrgDistributionCard } from "@/features/skills/components/org-distribution-card";
 import { api } from "@/lib/api-client";
 import { notifyOrgContentChange, resetPushBusForTest } from "@/lib/push-bus";
 

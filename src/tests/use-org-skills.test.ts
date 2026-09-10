@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { useOrgSkills } from "./use-org-skills";
+import { useOrgSkills } from "@/features/skills/hooks/use-org-skills";
 import { api } from "@/lib/api-client";
 
 vi.mock("@/lib/api-client", () => ({

@@ -6,8 +6,7 @@
 //! 把连接状态与通知信号映射为 IPC DTO 后发到 webview。
 
 use crate::application::notify::{
-    NotifyCoordinator, NotifyEvent, NotifyEventSink, NotifySpec, NotifyStream,
-    NotifyStreamFactory,
+    NotifyCoordinator, NotifyEvent, NotifyEventSink, NotifySpec, NotifyStream, NotifyStreamFactory,
 };
 use crate::dto::notify::{NotifyEventPayload, NotifyStatusPayload};
 use crate::shared::url::validate_backend_base_url;

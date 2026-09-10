@@ -177,7 +177,13 @@ pub async fn push_subscribe_user(
     let coordinator = Arc::clone(&state.notify);
     let on_finish: NotifyLoopFinishHook =
         Arc::new(move || coordinator.deactivate_if_current(generation));
-    tauri::async_runtime::spawn(run_notify_loop(spec, stop_receiver, factory, sink, on_finish));
+    tauri::async_runtime::spawn(run_notify_loop(
+        spec,
+        stop_receiver,
+        factory,
+        sink,
+        on_finish,
+    ));
     Ok(NotifyStatusDto { connected: true })
 }
 
