@@ -139,6 +139,17 @@ export const organizationApi = {
       "/api/v1/organizations/" + encodeURIComponent(organizationId),
       { method: "DELETE" },
     ),
+  /**
+   * 当前用户主动退出指定组织。
+   * <p>
+   * 无需 {@code MEMBER_MANAGE} 权限；若当前用户是组织所有者，
+   * 后端返回 {@code ORG_OWNER_CANT_LEAVE}（500 系列）让前端弹错。
+   */
+  leaveOrganization: (organizationId: string) =>
+    request<void>(
+      "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/leave",
+      { method: "POST" },
+    ),
   renameOrganization: (organizationId: string, name: string) =>
     request<import("@/lib/contracts").Organization>(
       "/api/v1/organizations/" + encodeURIComponent(organizationId),

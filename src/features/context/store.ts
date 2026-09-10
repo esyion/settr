@@ -46,6 +46,13 @@ interface WorkspaceState {
   setOrganizations: (orgs: Organization[]) => void;
   setOrganization: (id: string) => void;
   clearOrganization: () => void;
+  /**
+   * 当前用户主动退出指定组织。
+   * <p>
+   * 调用后端 /leave：成功后从 organizations 中剔除该组织，若被剔除的正是当前
+   * 激活组织则降级到个人空间；失败抛出错误由调用方决定提示。
+   */
+  leaveOrganization: (id: string) => Promise<void>;
   /** 拉取当前组织的权限码汇总;仍停留在该组织时才写入,失败降级为 null。 */
   refreshMyPermissions: (orgId: string) => Promise<void>;
   /** 判定当前工作区是否拥有指定权限码(org 级命中,或 teamId 对应的团队级命中)。 */
@@ -116,6 +123,29 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           scope: "personal",
           myPermissions: null,
         });
+      },
+
+      leaveOrganization: async (id) => {
+        try {
+          await api.leaveOrganization(id);
+        } catch (caught) {
+          set({ error: readableError(caught, "退出组织失败") });
+          throw caught;
+        }
+        // 成功：从列表剔除；若正好是当前激活组织则回到个人空间
+        const state = get();
+        const remaining = state.organizations.filter((o) => o.id !== id);
+        if (state.organizationId === id) {
+          set({
+            organizations: remaining,
+            organizationId: null,
+            organizationName: null,
+            scope: "personal",
+            myPermissions: null,
+          });
+        } else {
+          set({ organizations: remaining });
+        }
       },
 
       refreshMyPermissions: async (orgId) => {

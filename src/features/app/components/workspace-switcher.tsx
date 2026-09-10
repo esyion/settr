@@ -1,13 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Building2, ChevronsUpDown, Cloud, User } from "lucide-react";
+import { Building2, ChevronsUpDown, Cloud, LogOut, User } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -17,13 +20,18 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useWorkspaceStore } from "@/features/context/store";
+import {
+  LeaveOrganizationDialog,
+  useLeaveOrganizationDialog,
+} from "@/features/context/components/leave-organization-dialog";
 import { toast } from "sonner";
 
-/** AppSidebar 顶部的品牌 + scope 切换控件:对齐 shadcn TeamSwitcher。 */
+/** AppSidebar 顶部的品牌 + scope 切换控件：对齐 shadcn TeamSwitcher。 */
 export function WorkspaceSwitcher() {
   const ctx = useWorkspaceStore();
   const router = useRouter();
   const { isMobile } = useSidebar();
+  const leaveDialog = useLeaveOrganizationDialog();
 
   const isOrg = ctx.scope === "organization";
   const title = isOrg
@@ -82,22 +90,41 @@ export function WorkspaceSwitcher() {
                   我的组织
                 </DropdownMenuLabel>
                 {ctx.organizations.map((org) => (
-                  <DropdownMenuItem
-                    key={org.id}
-                    onClick={() => {
-                      ctx.setOrganization(org.id);
-                      toast.success(`已切换到 ${org.name}`);
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <Building2 className="size-4" />
-                    <span className="truncate">{org.name}</span>
-                    {ctx.organizationId === org.id && (
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        当前
-                      </span>
-                    )}
-                  </DropdownMenuItem>
+                  <DropdownMenuSub key={org.id}>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2">
+                      <Building2 className="size-4" />
+                      <span className="truncate">{org.name}</span>
+                      {ctx.organizationId === org.id && (
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          当前
+                        </span>
+                      )}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          ctx.setOrganization(org.id);
+                          toast.success(`已切换到 ${org.name}`);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Building2 className="size-4" />
+                        切换到 {org.name}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={(event) => {
+                          // 阻止菜单关闭后立即重新触发点击，保留主菜单关闭但弹窗打开
+                          event.preventDefault();
+                          leaveDialog.setLeaving(org);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <LogOut className="size-4" />
+                        退出 {org.name}
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                 ))}
               </>
             ) : null}
@@ -112,6 +139,13 @@ export function WorkspaceSwitcher() {
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+      <LeaveOrganizationDialog
+        leaving={leaveDialog.leaving}
+        busy={leaveDialog.busy}
+        onClose={leaveDialog.close}
+        onConfirm={leaveDialog.confirm}
+      />
     </SidebarMenu>
   );
 }
+
