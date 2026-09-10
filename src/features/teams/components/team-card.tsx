@@ -1,6 +1,8 @@
 "use client";
 
 import { Edit, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,18 +19,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
 import type { TeamsDataApi } from "@/features/teams/types";
 
 /**
  * 团队卡片：展示当前组织下的团队列表，
  * 提供创建表单与团队切换。
- * 每个团队行支持重命名与删除（带确认）。
+ * 每个团队行支持重命名与删除（带 AlertDialog 确认）。
  */
 export function TeamCard({ data }: { data: TeamsDataApi }) {
   const [name, setName] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
+    null,
+  );
+  const confirmingTeam = data.teams.find((t) => t.id === confirmingDeleteId);
 
   if (!data.organizationId) return null;
 
@@ -102,7 +107,7 @@ export function TeamCard({ data }: { data: TeamsDataApi }) {
                         size="sm"
                         variant="ghost"
                         disabled={data.busy !== null}
-                        onClick={() => void data.deleteTeam(team.id)}
+                        onClick={() => setConfirmingDeleteId(team.id)}
                       >
                         <Trash2 />
                       </Button>
@@ -146,6 +151,24 @@ export function TeamCard({ data }: { data: TeamsDataApi }) {
             创建
           </Button>
         </form>
+
+        <ConfirmDialog
+          open={confirmingDeleteId !== null}
+          busy={data.busy !== null}
+          destructive
+          title={confirmingTeam ? `删除团队「${confirmingTeam.name}」？` : "删除团队？"}
+          description="团队下的项目与成员关系将被一并移除，此操作不可撤销。"
+          confirmLabel="删除"
+          onOpenChange={(open) => {
+            if (!open) setConfirmingDeleteId(null);
+          }}
+          onConfirm={async () => {
+            if (!confirmingDeleteId) return;
+            const id = confirmingDeleteId;
+            setConfirmingDeleteId(null);
+            await data.deleteTeam(id);
+          }}
+        />
       </CardContent>
     </Card>
   );

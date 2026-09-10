@@ -2,6 +2,7 @@
 
 import { Edit, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,11 +16,12 @@ import type { TeamsDataApi } from "@/features/teams/types";
 
 /**
  * 组织选择器：展示当前组织，并支持重命名/删除。
- * 重命名与删除按钮带确认，避免误操作。
+ * 重命名与删除按钮带 AlertDialog 确认，避免误操作。
  */
 export function OrganizationSelector({ data }: { data: TeamsDataApi }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
     <Card>
@@ -81,7 +83,7 @@ export function OrganizationSelector({ data }: { data: TeamsDataApi }) {
                     size="sm"
                     variant="ghost"
                     disabled={data.busy !== null}
-                    onClick={() => void data.deleteOrganization()}
+                    onClick={() => setConfirmingDelete(true)}
                   >
                     <Trash2 />
                     删除
@@ -95,6 +97,20 @@ export function OrganizationSelector({ data }: { data: TeamsDataApi }) {
             请通过侧边栏的上下文切换器选择一个组织。
           </p>
         )}
+
+        <ConfirmDialog
+          open={confirmingDelete}
+          busy={data.busy !== null}
+          destructive
+          title="删除当前组织？"
+          description="组织、其下的团队与项目将被一并移除，此操作不可撤销。"
+          confirmLabel="删除"
+          onOpenChange={setConfirmingDelete}
+          onConfirm={async () => {
+            setConfirmingDelete(false);
+            await data.deleteOrganization();
+          }}
+        />
       </CardContent>
     </Card>
   );

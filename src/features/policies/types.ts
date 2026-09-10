@@ -36,6 +36,7 @@ export interface PoliciesDataApi {
   reviewPolicyChange: (
     requestId: string,
     decision: "APPROVED" | "REJECTED",
+    comment?: string,
   ) => Promise<void>;
   withdrawDistribution: (distributionId: string) => Promise<void>;
   /** 分发 APPROVED 版本;失败抛出(对话框保持打开,toast 已提示)。 */

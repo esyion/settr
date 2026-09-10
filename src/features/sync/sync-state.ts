@@ -6,6 +6,7 @@ import {
   saveLocalManifest,
 } from "@/lib/api-client";
 import type {
+  DeviceIdentity,
   DocumentFormat,
   Revision,
   SyncState,
@@ -96,6 +97,13 @@ async function clearStaleBaseManifest(
 }
 
 /** Loads the local snapshot and all authenticated remote synchronization state. */
+/**
+ * 加载工作区(本地 + 后端)。
+ *
+ * 安全契约：任何后端调用若返回 401/403(已认证失败),立即清空 session 并返回 signedOut,
+ * 而不是把错误冒泡成「error」让 layout 把整壳替换为登录页。
+ * 其他错误(5xx/网络)继续向上抛,由 controller 决定降级策略。
+ */
 export async function loadWorkspace(format: DocumentFormat): Promise<SyncState> {
   const runtime = await loadRuntimeSnapshot(APP_VERSION, format);
   const session = await loadSession();
@@ -123,11 +131,29 @@ export async function loadWorkspace(format: DocumentFormat): Promise<SyncState> 
       message: "登录会话已过期，请重新登录",
     };
   }
-  const document = await api.document(format);
+  let document;
+  try {
+    document = await api.document(format);
+  } catch (error) {
+    if (isAuthenticationError(error)) {
+      await clearSession();
+      return signedOutState(runtime, "登录会话已过期，请重新登录");
+    }
+    throw error;
+  }
   const failures: string[] = [];
   let devices: Awaited<ReturnType<typeof api.devices>> | null = null;
   let revisions: Awaited<ReturnType<typeof api.revisions>> | null = null;
-  const head: Revision | null = await api.revision(document.id, document.headRevisionId);
+  let head: Revision | null = null;
+  try {
+    head = await api.revision(document.id, document.headRevisionId);
+  } catch (error) {
+    if (isAuthenticationError(error)) {
+      await clearSession();
+      return signedOutState(runtime, "登录会话已过期，请重新登录");
+    }
+    throw error;
+  }
   let base: Revision | null = null;
   let local = runtime.local;
   const baseRevisionId = local.manifest.baseRevisionId;
@@ -139,12 +165,20 @@ export async function loadWorkspace(format: DocumentFormat): Promise<SyncState> 
     devices = deviceList;
     revisions = revisionList;
   } catch (error) {
+    if (isAuthenticationError(error)) {
+      await clearSession();
+      return signedOutState(runtime, "登录会话已过期，请重新登录");
+    }
     failures.push(readableFailure(error));
   }
   if (baseRevisionId && baseRevisionId !== document.headRevisionId) {
     try {
       base = await api.revision(document.id, baseRevisionId);
     } catch (error) {
+      if (isAuthenticationError(error)) {
+        await clearSession();
+        return signedOutState(runtime, "登录会话已过期，请重新登录");
+      }
       if (!isRevisionNotFound(error)) {
         failures.push(readableFailure(error));
       } else {
@@ -152,9 +186,7 @@ export async function loadWorkspace(format: DocumentFormat): Promise<SyncState> 
       }
     }
   }
-  const status = failures.length > 0
-    ? deriveStatus({ local, document, head })
-    : deriveStatus({ local, document, head });
+  const status = deriveStatus({ local, document, head });
   const baseResponse: SyncState = {
     status,
     format,
@@ -175,3 +207,21 @@ export async function loadWorkspace(format: DocumentFormat): Promise<SyncState> 
   }
   return baseResponse;
 }
+
+/**
+ * 构造已退出登录态：会话失效时复用,避免多处重复字面量。
+ */
+async function signedOutState(
+  runtime: { local: LocalSnapshot; identity: DeviceIdentity | null },
+  message: string,
+): Promise<SyncState> {
+  return {
+    ...EMPTY_STATE,
+    status: "signedOut",
+    format: "agentsMd",
+    local: runtime.local,
+    identity: runtime.identity,
+    message,
+  };
+}
+

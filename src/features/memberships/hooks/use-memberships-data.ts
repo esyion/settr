@@ -16,12 +16,14 @@ function readableError(error: unknown, fallback: string): string {
 
 /**
  * memberships feature 数据中枢：根据工作区上下文加载组织成员与团队成员。
+ *
+ * 团队成员依赖外部传入的 teamId(通常来自 useTeamsData.teamId),
+ * 避免每个组件各自维护一份 teamId 状态导致不同步。
  */
-export function useMembershipsData(): MembershipsDataApi {
+export function useMembershipsData(teamId = ""): MembershipsDataApi {
   const organizationId = useWorkspaceStore((s) => s.organizationId);
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [teamMemberships, setTeamMemberships] = useState<TeamMembership[]>([]);
-  const [teamId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -46,7 +48,7 @@ export function useMembershipsData(): MembershipsDataApi {
     };
   }, [organizationId]);
 
-  // 团队成员加载(简化版:实际应用应联动 teams feature 的当前 teamId)
+  // 团队成员加载,teamId 变化时重新拉取
   useEffect(() => {
     if (!teamId) {
       void Promise.resolve().then(() => setTeamMemberships([]));

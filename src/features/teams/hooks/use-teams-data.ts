@@ -131,7 +131,6 @@ export function useTeamsData(): TeamsDataApi {
 
   const deleteOrganization = useCallback(async () => {
     if (!organizationId) return;
-    if (!window.confirm("确认删除当前组织？此操作不可撤销")) return;
     setBusy("删除组织");
     try {
       await api.deleteOrganization(organizationId);
@@ -165,7 +164,6 @@ export function useTeamsData(): TeamsDataApi {
   const deleteTeam = useCallback(
     async (targetTeamId: string) => {
       if (!organizationId) return;
-      if (!window.confirm("确认删除该团队？")) return;
       setBusy("删除团队");
       try {
         await api.deleteTeam(organizationId, targetTeamId);
@@ -204,7 +202,6 @@ export function useTeamsData(): TeamsDataApi {
   const deleteProject = useCallback(
     async (targetProjectId: string) => {
       if (!organizationId || !teamId) return;
-      if (!window.confirm("确认删除该项目？")) return;
       setBusy("删除项目");
       try {
         await api.deleteProject(organizationId, teamId, targetProjectId);

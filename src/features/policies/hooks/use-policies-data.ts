@@ -123,7 +123,11 @@ export function usePoliciesData(): PoliciesDataApi {
   );
 
   const reviewPolicyChange = useCallback(
-    async (requestId: string, decision: "APPROVED" | "REJECTED") => {
+    async (
+      requestId: string,
+      decision: "APPROVED" | "REJECTED",
+      comment?: string,
+    ) => {
       if (!organizationId) return;
       setBusy("审批政策");
       try {
@@ -131,6 +135,7 @@ export function usePoliciesData(): PoliciesDataApi {
           organizationId,
           requestId,
           decision,
+          comment?.trim() ? comment.trim() : undefined,
         );
         setPendingPolicies((cur) => cur.filter((p) => p.id !== requestId));
         toast.success(`已${decision === "APPROVED" ? "批准" : "拒绝"}`);

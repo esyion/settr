@@ -8,12 +8,14 @@ import { TeamMembers } from "@/features/memberships/components/team-members";
 import { PendingInvitations } from "@/features/memberships/components/pending-invitations";
 import { InviteModal } from "@/features/memberships/components/invite-modal";
 import { useMembershipsData } from "@/features/memberships";
+import { useTeamsData } from "@/features/teams";
 
 /**
- * 成员管理页：组织成员 + 团队成员 + 待处理邀请 + 邀请入口。
+ * 成员管理页:组织成员 + 团队成员 + 待处理邀请 + 邀请入口。
  */
 export default function MembershipsPage() {
-  const data = useMembershipsData();
+  const teams = useTeamsData();
+  const data = useMembershipsData(teams.teamId);
   return (
     <div className="flex flex-col gap-6">
       <PageHeader

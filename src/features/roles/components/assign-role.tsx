@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -19,14 +18,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { Membership } from "@/lib/contracts";
 import type { RolesDataApi } from "@/features/roles/types";
 
 /**
  * 角色分配表单。
+ *
+ * 成员下拉:从 memberships 列表选择,不再要求手输 UUID;
+ * 角色下拉:从 data.roles 列出 roleName。
  */
-export function AssignRoleCard({ data }: { data: RolesDataApi }) {
+export function AssignRoleCard({
+  data,
+  memberships,
+}: {
+  data: RolesDataApi;
+  memberships: Membership[];
+}) {
   const [organizationMemberId, setOrganizationMemberId] = useState("");
   const [roleId, setRoleId] = useState("");
+
+  const memberOptions = memberships.filter(
+    (m) => m.status === "ACTIVE" || m.status === undefined,
+  );
 
   return (
     <Card>
@@ -47,13 +60,28 @@ export function AssignRoleCard({ data }: { data: RolesDataApi }) {
           }}
         >
           <div className="flex flex-col gap-1">
-            <Label htmlFor="member-id">成员 ID</Label>
-            <Input
-              id="member-id"
+            <Label htmlFor="member-id">成员</Label>
+            <Select
               value={organizationMemberId}
-              onChange={(e) => setOrganizationMemberId(e.target.value)}
-              placeholder="组织成员 ID"
-            />
+              onValueChange={setOrganizationMemberId}
+            >
+              <SelectTrigger id="member-id">
+                <SelectValue
+                  placeholder={
+                    memberOptions.length === 0
+                      ? "暂无活跃成员"
+                      : "选择组织成员"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {memberOptions.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {memberLabel(m)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor="role-id">角色</Label>
@@ -65,6 +93,7 @@ export function AssignRoleCard({ data }: { data: RolesDataApi }) {
                 {data.roles.map((r) => (
                   <SelectItem key={r.id} value={r.id}>
                     {r.roleName}
+                    {r.roleCode ? ` (${r.roleCode})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -73,7 +102,7 @@ export function AssignRoleCard({ data }: { data: RolesDataApi }) {
           <Button
             type="submit"
             disabled={
-              data.busy !== null || !organizationMemberId.trim() || !roleId
+              data.busy !== null || !organizationMemberId || !roleId
             }
           >
             <UserPlus />
@@ -83,4 +112,10 @@ export function AssignRoleCard({ data }: { data: RolesDataApi }) {
       </CardContent>
     </Card>
   );
+}
+
+/** 成员下拉项的展示标签:Membership 仅含 userId,前端裁短显示并附 ID 提示。 */
+function memberLabel(m: Membership): string {
+  const short = m.userId.length > 12 ? `${m.userId.slice(0, 8)}…` : m.userId;
+  return `${short} · ${m.status}`;
 }

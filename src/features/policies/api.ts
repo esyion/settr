@@ -46,9 +46,12 @@ export const policiesApi = {
   submitPolicyDraft: (
     orgId: string,
     input: { policyType: "AGENT" | "CLAUDE"; content: string; message: string },
-  ) => api.submitPolicyDraft(orgId, input),
-  reviewPolicyRequest: (orgId: string, requestId: string, decision: "APPROVED" | "REJECTED") =>
-    api.reviewPolicyRequest(orgId, requestId, decision),
+  ) => api.submitPolicyDraft(orgId, input),  reviewPolicyRequest: (
+    orgId: string,
+    requestId: string,
+    decision: "APPROVED" | "REJECTED",
+    comment?: string,
+  ) => api.reviewPolicyRequest(orgId, requestId, decision, comment),
   listPolicyHistory: (orgId: string, policyType: string) =>
     api.listPolicyHistory(orgId, policyType as "AGENT" | "CLAUDE"),
   listPolicyDistributions: (orgId: string) =>

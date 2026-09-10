@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Laptop, Save, Settings, XCircle } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,6 +81,7 @@ function DeviceCard({
 }) {
   const [name, setName] = useState(device.deviceName);
   const [editing, setEditing] = useState(false);
+  const [confirmingRevoke, setConfirmingRevoke] = useState(false);
   return (
     <Card>
       <CardHeader>
@@ -93,7 +95,7 @@ function DeviceCard({
           {formatTime(device.lastSeenAt)}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-3">
         {editing ? (
           <div className="flex flex-col gap-3 sm:flex-row">
             <Input
@@ -129,14 +131,7 @@ function DeviceCard({
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "确定撤销设备“" + device.deviceName + "”吗？",
-                    )
-                  )
-                    void onRevoke(device.deviceId);
-                }}
+                onClick={() => setConfirmingRevoke(true)}
                 disabled={busy === "revoke:" + device.deviceId}
               >
                 <XCircle />
@@ -145,6 +140,19 @@ function DeviceCard({
             )}
           </div>
         )}
+        <ConfirmDialog
+          open={confirmingRevoke}
+          busy={busy === "revoke:" + device.deviceId}
+          destructive
+          title={`撤销设备「${device.deviceName}」？`}
+          description="该设备的访问令牌将在服务端失效，下次登录需要重新授权。"
+          confirmLabel="撤销"
+          onOpenChange={setConfirmingRevoke}
+          onConfirm={async () => {
+            setConfirmingRevoke(false);
+            await onRevoke(device.deviceId);
+          }}
+        />
       </CardContent>
     </Card>
   );

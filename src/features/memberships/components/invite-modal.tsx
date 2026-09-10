@@ -14,15 +14,23 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { membershipsApi } from "@/features/memberships/api";
 import { useWorkspaceStore } from "@/features/context/store";
 import { useTeamsData } from "@/features/teams";
+import { useRolesData } from "@/features/roles";
 import { copyTextToClipboard } from "@/services/clipboard";
 import { ACCEPT_INVITE_HOST, RESET_PASSWORD_SCHEME } from "@/lib/deep-link";
 
 /**
- * 用明文邀请 token 拼桌面端深链，格式与 lib/deep-link 的解析约定一致。
+ * 用明文邀请 token 拼桌面端深链,格式与 lib/deep-link 的解析约定一致。
  *
  * @param token 创建邀请响应中的明文 token
  * @returns 形如 agentsplus://accept-invite?token=xxx 的深链
@@ -32,25 +40,26 @@ function buildInviteLink(token: string): string {
 }
 
 /**
- * 邀请成员弹窗：邮箱（必填）+ 可选角色 + 可选团队。
- * 提交后调 POST /api/v1/organizations/{orgId}/invitations；
- * 后端发送邀请邮件，同时响应携带一次性明文 token，弹窗展示对应深链供邀请人复制兜底
- * （邮件送达失败或被邀请人找不到邮件时，可通过 IM 直接把链接发给对方）。
+ * 邀请成员弹窗:邮箱(必填)+ 可选角色 + 可选团队。
+ * 角色改为下拉选择,不再要求手输 roleId。
+ * 提交后调 POST /api/v1/organizations/{orgId}/invitations;
+ * 后端发送邀请邮件,同时响应携带一次性明文 token,弹窗展示对应深链供邀请人复制兜底。
  */
 export function InviteModal({ children }: { children: React.ReactNode }) {
   const organizationId = useWorkspaceStore((s) => s.organizationId);
   const teams = useTeamsData();
+  const roles = useRolesData();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState("");
   const [teamIds, setTeamIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  /** 创建成功后展示的邀请深链；为 null 时显示表单，非 null 时显示成功面板。 */
+  /** 创建成功后展示的邀请深链;为 null 时显示表单,非 null 时显示成功面板。 */
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   /**
-   * 提交邀请；成功后保留弹窗并切换到深链展示面板，失败时 toast 错误。
+   * 提交邀请;成功后保留弹窗并切换到深链展示面板,失败时 toast 错误。
    */
   async function submit() {
     if (!organizationId || !email.trim() || busy) return;
@@ -81,7 +90,7 @@ export function InviteModal({ children }: { children: React.ReactNode }) {
   }
 
   /**
-   * 复制深链到系统剪贴板；两秒后恢复按钮态。
+   * 复制深链到系统剪贴板;两秒后恢复按钮态。
    */
   async function copyLink() {
     if (!inviteLink) return;
@@ -122,14 +131,14 @@ export function InviteModal({ children }: { children: React.ReactNode }) {
                 邀请已发送
               </DialogTitle>
               <DialogDescription>
-                邀请邮件已发送，链接 72 小时内有效。对方在桌面应用中打开链接即可加入。
+                邀请邮件已发送,链接 72 小时内有效。对方在桌面应用中打开链接即可加入。
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
               <div>
                 <Label className="mb-1.5 flex items-center gap-1.5">
                   <Link2 className="size-3.5" />
-                  邀请链接（邮件送达不及时的兜底）
+                  邀请链接(邮件送达不及时的兜底)
                 </Label>
                 <div className="rounded-md border bg-muted/40 p-2.5">
                   <p className="font-mono text-xs break-all text-muted-foreground select-all">
@@ -170,12 +179,26 @@ export function InviteModal({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 <Label htmlFor="invite-role">角色(可选)</Label>
-                <Input
-                  id="invite-role"
-                  value={roleId}
-                  onChange={(e) => setRoleId(e.target.value)}
-                  placeholder="角色 ID（可选）"
-                />
+                <Select value={roleId || "none"} onValueChange={(v) => setRoleId(v === "none" ? "" : v)}>
+                  <SelectTrigger id="invite-role">
+                    <SelectValue
+                      placeholder={
+                        roles.roles.length === 0
+                          ? "暂无可分配角色"
+                          : "不指定(稍后分配)"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">不指定</SelectItem>
+                    {roles.roles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.roleName}
+                        {r.roleCode ? ` (${r.roleCode})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>加入团队(可选)</Label>

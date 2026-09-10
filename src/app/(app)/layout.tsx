@@ -113,13 +113,13 @@ function AppLayoutShell({ children }: { children: React.ReactNode }) {
     return <LoadingNotice />;
   }
 
-  if (
-    controller.state.status === "error" ||
-    controller.state.status === "offline"
-  ) {
+  // 已登录用户遇到瞬时错误(后端 5xx / 网络抖动 / 离线):保留 shell 与侧边栏,
+  // 在顶部内嵌一条横幅给出原因与重试入口,避免一次失败把整壳替换为「无法恢复登录状态」。
+  // 仅当用户尚未登录(status === "signedOut" 且无 user)时才退化为全屏引导。
+  if (controller.state.status === "signedOut") {
     return (
       <StartupNotice
-        message={controller.state.message || "请检查网络连接和系统凭据存储"}
+        message={controller.state.message || "请登录后继续"}
         onRetry={async () => {
           await controller.refresh();
         }}
@@ -127,7 +127,7 @@ function AppLayoutShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!controller.state.user && controller.state.status !== "signedOut") {
+  if (!controller.state.user) {
     return (
       <StartupNotice
         message="登录状态尚未完成恢复，请重试"
@@ -196,6 +196,29 @@ function AppLayoutShell({ children }: { children: React.ReactNode }) {
               role="status"
             >
               {controller.notice}
+            </div>
+          )}
+          {(controller.state.status === "error" ||
+            controller.state.status === "offline") && (
+            <div
+              className="mx-4 mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+              role="alert"
+            >
+              <span className="flex-1">
+                {controller.state.status === "offline"
+                  ? "当前离线,数据可能不是最新。"
+                  : "与后端同步失败,数据可能不是最新。"}
+                {controller.state.message ? ` ${controller.state.message}` : null}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void controller.refresh()}
+                disabled={controller.busy === "refresh"}
+              >
+                <RefreshCw />
+                重新检查
+              </Button>
             </div>
           )}
           <div className="flex-1 px-4 py-6 sm:px-6">{children}</div>

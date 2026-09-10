@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Edit, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,12 +16,18 @@ import type { TeamsDataApi } from "@/features/teams/types";
 
 /**
  * 项目卡片：展示当前团队下的项目列表，
- * 项目可点击切换；提供创建项目表单与重命名/删除按钮。
+ * 项目可点击切换；提供创建项目表单与重命名/删除按钮（带确认）。
  */
 export function ProjectCard({ data }: { data: TeamsDataApi }) {
   const [name, setName] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
+    null,
+  );
+  const confirmingProject = data.projects.find(
+    (p) => p.id === confirmingDeleteId,
+  );
 
   if (!data.teamId) return null;
 
@@ -94,7 +101,7 @@ export function ProjectCard({ data }: { data: TeamsDataApi }) {
                         size="sm"
                         variant="ghost"
                         disabled={data.busy !== null}
-                        onClick={() => void data.deleteProject(project.id)}
+                        onClick={() => setConfirmingDeleteId(project.id)}
                       >
                         <Trash2 />
                       </Button>
@@ -125,6 +132,28 @@ export function ProjectCard({ data }: { data: TeamsDataApi }) {
             创建
           </Button>
         </form>
+
+        <ConfirmDialog
+          open={confirmingDeleteId !== null}
+          busy={data.busy !== null}
+          destructive
+          title={
+            confirmingProject
+              ? `删除项目「${confirmingProject.name}」？`
+              : "删除项目？"
+          }
+          description="项目下的关联数据将被一并移除，此操作不可撤销。"
+          confirmLabel="删除"
+          onOpenChange={(open) => {
+            if (!open) setConfirmingDeleteId(null);
+          }}
+          onConfirm={async () => {
+            if (!confirmingDeleteId) return;
+            const id = confirmingDeleteId;
+            setConfirmingDeleteId(null);
+            await data.deleteProject(id);
+          }}
+        />
       </CardContent>
     </Card>
   );

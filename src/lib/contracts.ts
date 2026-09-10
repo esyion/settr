@@ -144,7 +144,18 @@ export interface TeamMembership {
   joinedAt: string;
 }
 
-export interface PolicyReviewRequest { id: string; message: string; status: string; }
+export type PolicyType = "AGENT" | "CLAUDE";
+
+export interface PolicyReviewRequest {
+  id: string;
+  /** 草稿 message(commit message)。 */
+  message: string;
+  status: string;
+  /** 待审批的规范内容,后端从 t_policy_review_request.content 提供,前端展示给审批者。 */
+  content: string | null;
+  /** 所属规范文档类型(AGENTS.md / CLAUDE.md),便于审批者识别。 */
+  policyType: PolicyType | null;
+}
 export interface PolicyVersion { id: string; documentId: string; versionNo: number; content: string; sha256: string; status: string; }
 export interface PolicyDistribution { id: string; versionId: string; scopeType: string; teamId: string | null; projectId: string | null; memberId: string | null; withdrawn: boolean; }
 
